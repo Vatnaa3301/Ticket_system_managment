@@ -1,0 +1,119 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Verification - Team Vatana Jira</title>
+    <link rel="stylesheet" href="{% static 'css/jira-theme.css' %}">
+    <style>
+        :root {
+            --auth-bg: #141416;
+            --auth-card-bg: #1e1e22;
+            --auth-card-border: #2e2e34;
+            --auth-text-main: #f4f5f7;
+            --auth-text-muted: #8c9bab;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--auth-bg);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            color: var(--auth-text-main);
+        }
+
+        .verified-card {
+            width: 100%;
+            max-width: 440px;
+            background: var(--auth-card-bg);
+            border: 1px solid var(--auth-card-border);
+            border-radius: 12px;
+            padding: 40px 32px;
+            text-align: center;
+            box-shadow: 0 12px 36px rgba(0,0,0,0.4);
+        }
+
+        .icon-circle {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .icon-success {
+            background: rgba(54, 179, 126, 0.15);
+            color: #36b37e;
+            border: 2px solid #36b37e;
+        }
+
+        .icon-error {
+            background: rgba(255, 86, 48, 0.15);
+            color: #ff5630;
+            border: 2px solid #ff5630;
+        }
+
+        .verified-title {
+            font-size: 22px;
+            font-weight: 700;
+            margin: 0 0 10px 0;
+            color: var(--auth-text-main);
+        }
+
+        .verified-desc {
+            font-size: 14px;
+            color: var(--auth-text-muted);
+            line-height: 1.6;
+            margin-bottom: 28px;
+        }
+
+        .btn-action {
+            display: inline-block;
+            width: 100%;
+            padding: 12px;
+            background: #0052cc;
+            color: #ffffff !important;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: 14px;
+            text-decoration: none;
+            box-sizing: border-box;
+            transition: background 0.15s ease;
+        }
+
+        .btn-action:hover {
+            background: #0065ff;
+        }
+    </style>
+</head>
+<body>
+    <div class="verified-card">
+        {% if success %}
+        <div class="icon-circle icon-success">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <h1 class="verified-title">Email Verified Successfully!</h1>
+        <p class="verified-desc">
+            Hi <strong>{{ user_name }}</strong>, your email address <strong>{{ email }}</strong> has been verified. You can now log in and receive email notifications for tickets.
+        </p>
+        <a href="{% url 'board' %}" class="btn-action">Continue to Kanban Board</a>
+        {% else %}
+        <div class="icon-circle icon-error">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        </div>
+        <h1 class="verified-title">Verification Link Invalid</h1>
+        <p class="verified-desc">
+            {{ error|default:"This verification link has expired or has already been used." }}
+        </p>
+        <a href="{% url 'login' %}" class="btn-action">Back to Login</a>
+        {% endif %}
+    </div>
+</body>
+</html>

@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+
+{% block title %}Board - Team Vatana Jira{% endblock %}
+
+{% block content %}
+<!-- SPACE BANNER & TITLE -->
+<div class="space-banner">
+    <div class="space-meta">Spaces</div>
+    <div class="space-title-row">
+        <div class="space-avatar-icon">TV</div>
+        <h1 class="space-name">Team Vatana</h1>
+        <span style="font-size:12px; color:var(--jira-text-muted); display:inline-flex; align-items:center;" title="Team Space"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+    </div>
+
+    <!-- TABS BAR - ONLY SUMMARY, LIST, BOARD -->
+    <div class="tab-bar">
+        <a href="{% url 'summary' %}" class="tab-item {% if active_view == 'summary' %}active{% endif %}">
+            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+            Summary
+        </a>
+        <a href="{% url 'list' %}" class="tab-item {% if active_view == 'list' %}active{% endif %}">
+            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
+            List
+        </a>
+        <a href="{% url 'board' %}" class="tab-item {% if active_view == 'board' %}active{% endif %}">
+            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2m0 10V7m6 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/></svg>
+            Board
+        </a>
+    </div>
+</div>
+
+<!-- SECONDARY TOOLBAR -->
+<div class="board-toolbar">
+    <div class="toolbar-left">
+        <form action="" method="GET" style="display:flex; gap:8px; align-items:center;">
+            <div style="position:relative;">
+                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="position:absolute; left:8px; top:9px; color:var(--jira-text-muted);"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                <input type="text" name="q" class="board-search-input" placeholder="Search board" value="{{ query|default:'' }}">
+            </div>
+            
+            <select name="category" class="filter-select" onchange="this.form.submit()">
+                <option value="">Category: All</option>
+                {% for cat in categories %}
+                <option value="{{ cat.category_id }}" {% if cat_filter == cat.category_id|stringformat:"s" %}selected{% endif %}>{{ cat.category_name }}</option>
+                {% endfor %}
+            </select>
+
+            <select name="priority" class="filter-select" onchange="this.form.submit()">
+                <option value="">Priority: All</option>
+                {% for prio in priorities %}
+                <option value="{{ prio.priority_id }}" {% if prio_filter == prio.priority_id|stringformat:"s" %}selected{% endif %}>{{ prio.priority_name }}</option>
+                {% endfor %}
+            </select>
+
+            <select name="assignee" class="filter-select" onchange="this.form.submit()">
+                <option value="">Assignee: All</option>
+                {% for u in users %}
+                <option value="{{ u.id }}" {% if assignee_filter == u.id|stringformat:"s" %}selected{% endif %}>{{ u.username }}</option>
+                {% endfor %}
+            </select>
+
+            {% if cat_filter or prio_filter or assignee_filter or query %}
+            <a href="{% url 'board' %}" style="font-size:12px; color:var(--jira-blue); font-weight:600; text-decoration:none;">Clear</a>
+            {% endif %}
+        </form>
+    </div>
+</div>
+
+<!-- KANBAN BOARD CONTAINER -->
+<div class="kanban-board-container">
+    {% for col in board_columns %}
+    <div class="kanban-column">
+        <div class="column-header" style="position:relative; display:flex; align-items:center; justify-content:space-between;">
+            <div style="display:flex; align-items:center; gap:8px;">
+                <span>{{ col.status.status_name }}</span>
+                <span class="column-count">{{ col.count }}</span>
+            </div>
+            
+            <button type="button" class="col-menu-btn" 
+                    onclick="openColumnContextMenu(event, this, {{ col.status.status_id }}, '{{ col.status.status_name }}')" 
+                    title="Column options"
+                    style="width:24px; height:24px; border-radius:6px; background:#0052cc; color:#ffffff; border:none; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; font-weight:bold; font-size:12px; line-height:1; transition:all 0.15s ease;">
+                •••
+            </button>
+        </div>
+
+
+        <div class="column-cards-container" data-status-id="{{ col.status.status_id }}">
+            {% for t in col.tickets %}
+            <div class="ticket-card" draggable="true" data-ticket-id="{{ t.ticket_id }}">
+                <div class="card-title">
+                    <span>{{ t.subject }}</span>
+                    <button type="button" class="card-menu-btn no-modal"
+                            onclick="openCardMenu(event, this, {{ t.ticket_id }}, '{{ t.ticket_code }}', {{ t.status.status_id }})"
+                            title="Actions">•••</button>
+                </div>
+                
+                {% if t.due_date %}
+                <div>
+                    <div class="card-due-label">Due date</div>
+                    <div class="card-due-date" style="display:inline-flex; align-items:center; gap:4px; {% if t.is_due_soon %}color:#ff5630; font-weight:600;{% endif %}">
+                        <span>{{ t.due_date|date:"d M Y" }}</span>
+                        {% if t.is_due_soon %}
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ff5630" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" title="Due within 1 day or overdue" style="flex-shrink:0;">
+                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                            <line x1="12" y1="9" x2="12" y2="13"></line>
+                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                        </svg>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
+
+                <div class="card-key-row">
+                    <div class="key-tag">
+                        {% if col.status.status_name|lower == 'done' or col.status.status_name|lower == 'resolved' or col.status.status_name|lower == 'closed' or t.status.status_name|lower == 'done' or t.status.status_name|lower == 'resolved' or t.status.status_name|lower == 'closed' %}
+                        <div class="key-icon-box key-icon-green" title="Done"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+                        {% else %}
+                        <div class="key-icon-box key-icon-blue" title="Task"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></div>
+                        {% endif %}
+                        <span>{{ t.ticket_code }}</span>
+                    </div>
+
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <!-- Priority Button -->
+                        <button type="button" class="card-priority-btn no-modal"
+                                data-ticket-id="{{ t.ticket_id }}"
+                                data-priority-id="{{ t.priority.priority_id }}"
+                                data-priority-name="{{ t.priority.priority_name }}"
+                                onclick="openPriorityMenu(event, this)"
+                                title="Change Priority"
+                                style="width:22px; height:22px; padding:0; align-self:center;">
+                            {% if t.priority.priority_name == 'Highest' %}
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ff5630" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:block;"><polyline points="17 11 12 6 7 11"></polyline><polyline points="17 17 12 12 7 17"></polyline></svg>
+                            {% elif t.priority.priority_name == 'High' %}
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ff5630" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:block;"><polyline points="18 15 12 9 6 15"></polyline></svg>
+                            {% elif t.priority.priority_name == 'Medium' %}
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ff9900" stroke-width="2.5" stroke-linecap="round" style="display:block;"><line x1="5" y1="9" x2="19" y2="9"></line><line x1="5" y1="15" x2="19" y2="15"></line></svg>
+                            {% elif t.priority.priority_name == 'Low' %}
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2684ff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:block;"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                            {% elif t.priority.priority_name == 'Lowest' %}
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2684ff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:block;"><polyline points="7 7 12 12 17 7"></polyline><polyline points="7 13 12 18 17 13"></polyline></svg>
+                            {% else %}
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#626f86" stroke-width="2" stroke-linecap="round" style="display:block;"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                            {% endif %}
+                        </button>
+
+                        <!-- Assignee Avatar -->
+                        <div class="user-avatar" title="{% if t.assigned_to %}{{ t.assigned_to.profile.full_name|default:t.assigned_to.profile.public_name|default:t.assigned_to.username }}{% else %}Unassigned{% endif %}" style="width:22px; height:22px; font-size:9.5px; flex-shrink:0; align-self:center; background:{% if t.assigned_to %}{{ t.assigned_to.profile.avatar_color|default:'#0052cc' }}{% else %}#626f86{% endif %}; color:#ffffff; font-weight:700; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; overflow:hidden;">
+                            {% if t.assigned_to %}
+                                {% if t.assigned_to.profile.profile_image %}
+                                <img src="{{ t.assigned_to.profile.profile_image }}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">
+                                {% else %}
+                                {{ t.assigned_to.profile.full_name|default:t.assigned_to.username|slice:":2"|upper }}
+                                {% endif %}
+                            {% else %}
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <button type="button" class="btn-add-card-icon btn-open-create-modal" data-status-id="{{ col.status.status_id }}">
+            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            Create
+        </button>
+    </div>
+    {% endfor %}
+
+    <!-- ADD STATUS BUTTON AT THE TOP CORNER OF KANBAN BOARD -->
+    <div class="add-status-corner-box" style="padding-top: 4px; padding-left: 6px; flex-shrink: 0;">
+        <button type="button" id="btnAddStatusColumn" title="Add status" 
+                style="width: 36px; height: 36px; border-radius: 8px; background: var(--jira-card-bg); border: 1px solid var(--jira-border); color: var(--jira-text-dark); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.15s ease;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+    </div>
+</div>
+
+<!-- FLOATING COLUMN CONTEXT MENU -->
+<div id="columnContextMenu" class="status-dropdown-menu" style="display:none; position:fixed; z-index:99999; min-width:180px; padding:6px 0;">
+    <button type="button" class="dropdown-item-btn" onclick="moveColumnAction('left')" style="display:flex; align-items:center; gap:10px; width:100%; padding:8px 14px; background:transparent; border:none; font-size:13px; cursor:pointer; text-align:left; font-weight:500;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+        <span>Move column left</span>
+    </button>
+    <button type="button" class="dropdown-item-btn" onclick="moveColumnAction('right')" style="display:flex; align-items:center; gap:10px; width:100%; padding:8px 14px; background:transparent; border:none; font-size:13px; cursor:pointer; text-align:left; font-weight:500;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        <span>Move column right</span>
+    </button>
+    <div style="height:1px; background:var(--jira-border); margin:6px 0;"></div>
+    <button type="button" class="dropdown-item-btn logout-btn" onclick="deleteColumnAction()" style="display:flex; align-items:center; gap:10px; width:100%; padding:8px 14px; background:transparent; border:none; font-size:13px; cursor:pointer; text-align:left; font-weight:600;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+        <span>Delete status</span>
+    </button>
+</div>
+
+{% block extra_js %}
+
+<script>
+// Inject server-side priority ID map into JS
+// This runs after kanban.js loads PRIORITY_CONFIGS, so we patch IDs here.
+(function() {
+    const serverPriorities = [
+        {% for p in priorities %}
+        { id: {{ p.priority_id }}, name: "{{ p.priority_name }}" }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
+    // Wait for kanban.js to define PRIORITY_CONFIGS, then patch IDs
+    function patchPriorityIds() {
+        if (typeof PRIORITY_CONFIGS === 'undefined') {
+            setTimeout(patchPriorityIds, 50);
+            return;
+        }
+        serverPriorities.forEach(sp => {
+            const cfg = PRIORITY_CONFIGS.find(c => c.name === sp.name);
+            if (cfg) cfg.id = sp.id;
+        });
+    }
+    patchPriorityIds();
+})();
+</script>
+{% endblock %}
+{% endblock %}

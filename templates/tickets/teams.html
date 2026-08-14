@@ -1,0 +1,266 @@
+{% extends "base.html" %}
+
+{% block title %}Teams - Team Vatana Jira{% endblock %}
+
+{% block content %}
+<div class="teams-page-container">
+    <!-- PAGE HEADER -->
+    <div class="teams-page-header">
+        <div>
+            <h1 class="teams-heading">Team Vatana Members</h1>
+            <p class="teams-subheading">Manage team members, roles, and permissions across Team Vatana.</p>
+        </div>
+        {% if is_admin %}
+        <button type="button" class="btn-primary" onclick="openAddUserModal()" style="height:38px; padding:0 18px; display:inline-flex; align-items:center; gap:8px; background:#0052cc; font-weight:600; border-radius:4px;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <span>Add people</span>
+        </button>
+        {% endif %}
+    </div>
+
+    <!-- METRICS CARDS -->
+    <div class="teams-metrics-grid">
+        <div class="teams-metric-card">
+            <div class="metric-label">Total Members</div>
+            <div class="metric-val" id="statTotalCount">{{ total_count }}</div>
+        </div>
+        <div class="teams-metric-card">
+            <div class="metric-label">Administrators</div>
+            <div class="metric-val" style="color: #904ee2;">{{ admin_count }}</div>
+        </div>
+        <div class="teams-metric-card">
+            <div class="metric-label">Members</div>
+            <div class="metric-val" style="color: #579dff;">{{ member_count }}</div>
+        </div>
+        <div class="teams-metric-card">
+            <div class="metric-label">Viewers</div>
+            <div class="metric-val" style="color: var(--jira-text-muted);">{{ viewer_count }}</div>
+        </div>
+    </div>
+
+    <!-- FILTER BAR -->
+    <div class="teams-filter-bar">
+        <div class="search-input-wrapper" style="position:relative; width:320px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--jira-text-muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position:absolute; left:12px; top:13px;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="teamMemberSearch" placeholder="Search members by name or email..." class="form-control" style="padding-left:34px; height:38px; font-size:13px;">
+        </div>
+        {% if not is_admin %}
+        <div style="font-size:12px; color:var(--jira-text-muted); display:flex; align-items:center; gap:6px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <span>Viewing Mode (Admin required to change roles or remove members)</span>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- MEMBERS TABLE -->
+    <div class="teams-table-wrapper">
+        <table class="teams-table" id="teamsMembersTable">
+            <thead>
+                <tr>
+                    <th style="width:30%;">Member</th>
+                    <th style="width:25%;">Role</th>
+                    <th style="width:20%;">Department</th>
+                    <th style="width:15%;">Status</th>
+                    <th style="width:10%; text-align:right;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for m in members %}
+                <tr id="member-row-{{ m.id }}" data-search-text="{{ m.display_name|lower }} {{ m.email|lower }} {{ m.username|lower }}">
+                    <td>
+                        <div style="display:flex; align-items:center; gap:12px;">
+                            <div class="user-avatar" style="width:34px; height:34px; font-size:12px; font-weight:700; background:{{ m.avatar_color|default:'#0052cc' }}; color:#ffffff; flex-shrink:0; display:flex; align-items:center; justify-content:center; border-radius:50%; overflow:hidden;">
+                                {% if m.profile_image %}
+                                <img src="{{ m.profile_image }}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">
+                                {% else %}
+                                {{ m.initials }}
+                                {% endif %}
+                            </div>
+                            <div>
+                                <div style="font-size:14px; font-weight:600; color:var(--jira-text-dark);">
+                                    {{ m.display_name }}
+                                    {% if m.is_self %}
+                                    <span style="font-size:11px; font-weight:700; color:var(--jira-blue); background:rgba(87,157,255,0.12); padding:1px 6px; border-radius:4px; margin-left:4px;">YOU</span>
+                                    {% endif %}
+                                </div>
+                                <div style="font-size:12px; color:var(--jira-text-muted);">{{ m.email|default:m.username }}</div>
+                            </div>
+                        </div>
+                    </td>
+
+                    <td>
+                        {% if is_admin and not m.is_self %}
+                        <!-- Admin role change with explicit Save button -->
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <select class="role-select-inline" id="role-select-{{ m.id }}" data-initial-role="{{ m.role }}" onchange="onRoleSelectChange({{ m.id }})" style="height:32px; font-size:13px; font-weight:600; padding:0 8px; border-radius:4px; border:1px solid var(--jira-border); background:var(--jira-card-bg); color:var(--jira-text-dark); cursor:pointer;">
+                                <option value="Member" {% if m.role == 'Member' or m.role == 'User' %}selected{% endif %}>Member</option>
+                                <option value="Administrator" {% if m.role == 'Administrator' or m.role == 'Admin' %}selected{% endif %}>Administrator</option>
+                                <option value="Support Agent" {% if m.role == 'Support Agent' or m.role == 'Agent' %}selected{% endif %}>Support Agent</option>
+                                <option value="Viewer" {% if m.role == 'Viewer' or m.role == 'Guest' %}selected{% endif %}>Viewer</option>
+                            </select>
+
+                            <button type="button" class="btn-save-role" id="btn-save-role-{{ m.id }}" onclick="saveMemberRole({{ m.id }})" style="display:none;">
+                                Save
+                            </button>
+
+                            <span class="saved-feedback-badge" id="saved-badge-{{ m.id }}" style="display:none; font-size:12px; font-weight:700; color:#4bb381; align-items:center; gap:4px;">
+                                ✓ Saved
+                            </span>
+                        </div>
+                        {% else %}
+                        <!-- Non-admin or self viewing badge -->
+                        <span class="role-pill-badge role-{{ m.role|slugify }}">
+                            {{ m.role }}
+                        </span>
+                        {% endif %}
+                    </td>
+
+                    <td style="font-size:13px; color:var(--jira-text-dark);">{{ m.department }}</td>
+
+                    <td>
+                        <span class="status-badge-active">
+                            <span class="status-dot"></span> Active
+                        </span>
+                    </td>
+
+                    <td style="text-align:right;">
+                        {% if is_admin and not m.is_self %}
+                        <button type="button" class="btn-remove-member" onclick="removeMember({{ m.id }}, '{{ m.display_name|escapejs }}')" title="Remove member from team" style="background:none; border:none; color:#ff5630; cursor:pointer; padding:6px; border-radius:4px;">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                        </button>
+                        {% else %}
+                        <span style="font-size:12px; color:var(--jira-text-muted);">--</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    // Search member filtering
+    document.addEventListener('DOMContentLoaded', () => {
+        const searchInput = document.getElementById('teamMemberSearch');
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                const term = e.target.value.toLowerCase().trim();
+                const rows = document.querySelectorAll('#teamsMembersTable tbody tr');
+                rows.forEach(row => {
+                    const text = row.dataset.searchText || '';
+                    row.style.display = text.includes(term) ? '' : 'none';
+                });
+            });
+        }
+    });
+
+    // Detect when role selector is changed and show/hide Save button
+    window.onRoleSelectChange = function(userId) {
+        const select = document.getElementById(`role-select-${userId}`);
+        const saveBtn = document.getElementById(`btn-save-role-${userId}`);
+        const badge = document.getElementById(`saved-badge-${userId}`);
+        if (!select || !saveBtn) return;
+
+        if (badge) badge.style.display = 'none';
+
+        const initialRole = select.dataset.initialRole;
+        if (select.value !== initialRole) {
+            saveBtn.style.display = 'inline-flex';
+        } else {
+            saveBtn.style.display = 'none';
+        }
+    };
+
+    // Explicit Save function for Admin
+    window.saveMemberRole = async function(userId) {
+        const select = document.getElementById(`role-select-${userId}`);
+        const saveBtn = document.getElementById(`btn-save-role-${userId}`);
+        const badge = document.getElementById(`saved-badge-${userId}`);
+        if (!select || !saveBtn) return;
+
+        const newRole = select.value;
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving...';
+
+        try {
+            const res = await fetch(`/api/users/${userId}/update-role/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ role_name: newRole })
+            });
+            const data = await res.json();
+            if (data.success) {
+                select.dataset.initialRole = data.new_role;
+                saveBtn.style.display = 'none';
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Save';
+
+                if (badge) {
+                    badge.style.display = 'inline-flex';
+                    setTimeout(() => { badge.style.display = 'none'; }, 2500);
+                }
+            } else {
+                alert('Failed to update role: ' + (data.error || 'Permission denied'));
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Save';
+            }
+        } catch (err) {
+            console.error('Error saving role:', err);
+            alert('Error updating role: ' + err.message);
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Save';
+        }
+    };
+
+    // Real-Time Remove Member function for Admin
+    window.removeMember = async function(userId, name) {
+        if (!confirm(`Are you sure you want to remove ${name} from Team Vatana?`)) return;
+        try {
+            const res = await fetch(`/api/users/${userId}/remove/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const data = await res.json();
+            if (data.success) {
+                const row = document.getElementById(`member-row-${userId}`);
+                if (row) {
+                    row.style.transition = 'all 0.2s ease';
+                    row.style.opacity = '0';
+                    setTimeout(() => row.remove(), 200);
+                }
+            } else {
+                alert('Failed to remove member: ' + (data.error || 'Permission denied'));
+            }
+        } catch (err) {
+            console.error('Error removing member:', err);
+            alert('Error removing member: ' + err.message);
+        }
+    };
+
+    // Subscribe to Pusher team management events for real-time updates across browsers
+    if (typeof Pusher !== 'undefined') {
+        const pusher = new Pusher('308cbea8f43adedfd722', { cluster: 'ap1' });
+        const channel = pusher.subscribe('team_management');
+        
+        channel.bind('role-updated', function(data) {
+            const row = document.getElementById(`member-row-${data.user_id}`);
+            if (row) {
+                const select = row.querySelector('.role-select-inline');
+                if (select) select.value = data.new_role;
+                const badge = row.querySelector('.role-pill-badge');
+                if (badge) badge.textContent = data.new_role;
+            }
+        });
+
+        channel.bind('user-removed', function(data) {
+            const row = document.getElementById(`member-row-${data.user_id}`);
+            if (row) {
+                row.style.transition = 'all 0.2s ease';
+                row.style.opacity = '0';
+                setTimeout(() => row.remove(), 200);
+            }
+        });
+    }
+</script>
+{% endblock %}

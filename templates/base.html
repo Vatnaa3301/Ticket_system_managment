@@ -1,0 +1,1244 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Team Vatana - Jira{% endblock %}</title>
+    <script>
+        (function() {
+            window.applyJiraTheme = function(theme) {
+                document.documentElement.setAttribute('data-theme', theme);
+                localStorage.setItem('jira_theme', theme);
+                const btn = document.getElementById('themeToggleBtn');
+                if (btn) {
+                    const sunIcon = btn.querySelector('.sun-icon');
+                    const moonIcon = btn.querySelector('.moon-icon');
+                    if (sunIcon && moonIcon) {
+                        if (theme === 'dark') {
+                            sunIcon.style.display = 'block';
+                            moonIcon.style.display = 'none';
+                            btn.setAttribute('title', 'Switch to Light Mode');
+                        } else {
+                            sunIcon.style.display = 'none';
+                            moonIcon.style.display = 'block';
+                            btn.setAttribute('title', 'Switch to Dark Mode');
+                        }
+                    }
+                }
+            };
+
+            window.toggleJiraTheme = function() {
+                const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+                const newTheme = (currentTheme === 'dark') ? 'light' : 'dark';
+                window.applyJiraTheme(newTheme);
+            };
+
+            // Set initial data-theme attribute immediately to prevent flash
+            const savedTheme = localStorage.getItem('jira_theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            document.addEventListener('DOMContentLoaded', function() {
+                window.applyJiraTheme(savedTheme);
+            });
+        })();
+    </script>
+
+    <!-- Pusher Real-Time JS Client -->
+    <script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
+
+    <link rel="stylesheet" href="{% static 'css/jira-theme.css' %}">
+</head>
+
+<body>
+    <!-- TOP HEADER NAVBAR MATCHING JIRA SCREENSHOT -->
+    <header class="jira-header">
+        <div class="jira-header-left">
+            <button class="icon-btn" title="App Switcher">
+                <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M4 4h4v4H4V4zm6 0h4v4h-4V4zm6 0h4v4h-4V4zM4 10h4v4H4v-4zm6 0h4v4h-4v-4zm6 0h4v4h-4v-4zM4 16h4v4H4v-4zm6 0h4v4h-4v-4zm6 0h4v4h-4v-4z"/></svg>
+            </button>
+            <a href="{% url 'board' %}" class="jira-brand">
+                <div class="jira-brand-icon">J</div>
+                <span>Jira</span>
+            </a>
+            <div class="search-box">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                <input type="text" placeholder="Search">
+            </div>
+            <button type="button" class="btn-create btn-open-create-modal">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                Create
+            </button>
+        </div>
+        <div class="jira-header-right">
+            <button class="icon-btn" title="Notifications">
+                <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+            </button>
+            <button class="icon-btn" title="Help">
+                <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            </button>
+            <button class="icon-btn" title="Settings">
+                <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            </button>
+            <button type="button" id="themeToggleBtn" class="theme-toggle-btn" title="Toggle Dark/Light Mode" onclick="toggleJiraTheme()">
+                <svg class="sun-icon" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                <svg class="moon-icon" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="display:none;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+            </button>
+
+
+            <!-- PROFILE MENU CONTAINER -->
+            <div class="user-profile-menu-container">
+                <div class="user-avatar-btn" id="userAvatarBtn" title="{{ user.profile.full_name|default:user.profile.public_name|default:user.username }}" style="background: {{ user.profile.avatar_color|default:'#0052cc' }}; overflow: hidden;">
+                    {% if user.profile.profile_image %}
+                        <img src="{{ user.profile.profile_image }}" class="user-top-avatar-img" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">
+                    {% else %}
+                        <span class="user-top-avatar-initials">{{ user.profile.full_name|default:user.username|slice:":2"|upper }}</span>
+                    {% endif %}
+                </div>
+
+                <!-- USER DROPDOWN MENU -->
+                <div class="user-dropdown-menu" id="userDropdownMenu">
+                    <div class="user-dropdown-header">
+                        <div class="user-avatar-btn user-dropdown-avatar" style="width: 36px; height: 36px; font-size: 13px; cursor: default; background: {{ user.profile.avatar_color|default:'#0052cc' }}; overflow: hidden;">
+                            {% if user.profile.profile_image %}
+                                <img src="{{ user.profile.profile_image }}" class="user-top-avatar-img" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">
+                            {% else %}
+                                <span class="user-top-avatar-initials">{{ user.profile.full_name|default:user.username|slice:":2"|upper }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="user-dropdown-info">
+                            <div class="user-dropdown-name" id="dropdownHeaderName">
+                                {{ user.profile.full_name|default:user.profile.public_name|default:user.username }}
+                            </div>
+                            <div class="user-dropdown-email">
+                                {{ user.email|default:"No email" }}
+                            </div>
+                            <span class="user-dropdown-badge">
+                                {{ user.profile.role.role_name|default:"User" }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <ul style="list-style: none; padding: 0; margin: 0;">
+                        <li style="margin-bottom: 4px;">
+                            <button type="button" class="dropdown-item-btn" id="btnOpenEditProfileModal">
+                                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                                <span>Manage Profile & Settings</span>
+                            </button>
+                        </li>
+                        {% if user.is_superuser or user.profile.role.role_name == 'Admin' %}
+                        <li style="margin-bottom: 4px;">
+                            <button type="button" class="dropdown-item-btn" id="btnOpenAddUserModal">
+                                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
+                                <span>Add User Account</span>
+                            </button>
+                        </li>
+                        {% endif %}
+                        <li>
+                            <a href="{% url 'logout' %}" class="dropdown-item-btn logout-btn">
+                                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                                <span>Log Out</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </header>
+
+
+
+    <!-- APP LAYOUT -->
+    <div class="jira-layout">
+        <!-- RESIZABLE SIDEBAR MATCHING SCREENSHOT EXACTLY -->
+        <aside class="jira-sidebar" id="jiraSidebar">
+            <!-- SIDEBAR DRAG RESIZER HANDLE -->
+            <div class="sidebar-resizer" id="sidebarResizer"></div>
+
+            <ul class="nav-menu">
+                <li>
+                    <a href="{% url 'for_you' %}" class="nav-item-link {% if active_view == 'for_you' %}active{% endif %}">
+                        <div class="nav-left">
+                            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            <span>For you</span>
+                        </div>
+                    </a>
+                </li>
+            </ul>
+
+            <div style="margin-top:16px;">
+                <div style="padding:4px 8px; font-size:11px; font-weight:700; color:var(--jira-text-muted); text-transform:uppercase; letter-spacing:0.5px;">
+                    <span>Spaces</span>
+                </div>
+
+                <ul class="nav-menu" style="margin-top:4px;">
+                    <li>
+                        <a href="{% url 'board' %}" class="nav-item-link {% if active_view == 'board' or active_view == 'list' %}active{% endif %}">
+                            <div class="nav-left">
+                                <div style="width:18px; height:18px; background:#0052cc; color:white; border-radius:3px; font-size:10px; font-weight:800; display:flex; align-items:center; justify-content:center;">TV</div>
+                                <span>Team Vatana</span>
+                            </div>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <div style="margin-top:16px;">
+                <ul class="nav-menu">
+                    <li>
+                        <a href="{% url 'summary' %}" class="nav-item-link {% if active_view == 'summary' %}active{% endif %}">
+                            <div class="nav-left">
+                                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h3a1 1 0 011 1v6a1 1 0 01-1 1h-3a1 1 0 01-1-1v-6z"/></svg>
+                                <span>Dashboards</span>
+                            </div>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'teams' %}" class="nav-item-link {% if active_view == 'teams' %}active{% endif %}">
+                            <div class="nav-left">
+                                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                                <span>Teams</span>
+                            </div>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </aside>
+
+        <!-- MAIN CONTENT AREA -->
+        <main class="jira-main">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <!-- CREATE TICKET MODAL (EXACT JIRA UI) -->
+    <div class="modal-overlay" id="createTicketModal">
+        <div class="modal-card jira-create-modal-card" style="width: 720px; max-width: 92vw; max-height: 90vh; border-radius: 8px; box-shadow: 0 16px 48px rgba(0,0,0,0.4); display: flex; flex-direction: column; overflow: hidden;">
+            <!-- HEADER BAR WITH CONTROLS -->
+            <div class="modal-header" style="padding: 16px 24px; display: flex; align-items: center; justify-content: space-between;">
+                <h3 class="modal-title" style="font-size: 20px; font-weight: 700; margin: 0;">Create Issue</h3>
+                <div style="display: flex; align-items: center; gap: 12px; color: var(--jira-text-muted);">
+                    <button type="button" class="icon-btn" title="Minimize" style="background:none; border:none; color:inherit; cursor:pointer; font-size:16px;">—</button>
+                    <button type="button" class="icon-btn" title="Fullscreen" style="background:none; border:none; color:inherit; cursor:pointer; font-size:14px;">⤢</button>
+                    <button type="button" class="icon-btn" title="More options" style="background:none; border:none; color:inherit; cursor:pointer; font-size:16px;">•••</button>
+                    <button type="button" class="btn-close btn-close-modal" style="background:none; border:none; font-size:22px; cursor:pointer; line-height:1;">&times;</button>
+                </div>
+            </div>
+
+            <form id="createTicketForm" style="display: flex; flex-direction: column; flex: 1; overflow: hidden;">
+                <div class="modal-body" style="padding: 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px;">
+                    
+                    <!-- FIELD 1: WORK TYPE / CATEGORY -->
+                    <div class="form-group">
+                        <label style="font-size: 12px; font-weight: 700; text-transform: none; margin-bottom: 6px;">Work type <span style="color: #ff5630;">*</span></label>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <div style="position: relative; flex: 1;">
+                                <div style="position: absolute; left: 12px; top: 10px; display: flex; align-items: center; gap: 6px; pointer-events: none;">
+                                    <div style="width: 16px; height: 16px; background: #22a06b; border-radius: 3px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 10px; font-weight: bold;">✓</div>
+                                </div>
+                                <select id="createCategory" class="form-control" style="padding-left: 36px; border-radius: 4px; height: 38px; font-weight: 500;">
+                                    <option value="">Select Category</option>
+                                    {% for cat in categories %}
+                                    <option value="{{ cat.category_id }}">{{ cat.category_name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <button type="button" id="btnInlineAddCategory" title="Add new category" style="height: 38px; padding: 0 12px; display: inline-flex; align-items: center; gap: 6px; background: #0052cc; color: #ffffff; border: none; border-radius: 4px; font-size: 13px; font-weight: 600; cursor: pointer; flex-shrink: 0;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                <span>Add Category</span>
+                            </button>
+                        </div>
+                        <div style="margin-top: 4px; font-size: 12px; color: var(--jira-blue);">
+                            <a href="#" style="color: var(--jira-blue); text-decoration: none;" onclick="event.preventDefault();">Learn about work types ↗</a>
+                        </div>
+                    </div>
+
+                    <div style="height: 1px; background: var(--jira-border); margin: 2px 0;"></div>
+
+                    <!-- FIELD 2: STATUS -->
+                    <div class="form-group">
+                        <label style="font-size: 12px; font-weight: 700; text-transform: none; margin-bottom: 6px;">Status</label>
+                        <select id="createStatus" class="form-control" style="width: 140px; border-radius: 4px; height: 36px; font-weight: 600;">
+                            {% for st in statuses %}
+                            <option value="{{ st.status_id }}">{{ st.status_name }}</option>
+                            {% endfor %}
+                        </select>
+                        <span style="font-size: 12px; color: var(--jira-text-muted); margin-top: 4px;">This is the initial status upon creation</span>
+                    </div>
+
+                    <!-- FIELD 3: SUMMARY -->
+                    <div class="form-group">
+                        <label style="font-size: 12px; font-weight: 700; text-transform: none; margin-bottom: 6px;">Summary <span style="color: #ff5630;">*</span></label>
+                        <input type="text" id="createSubject" class="form-control" style="border-radius: 4px; height: 40px; font-size: 14px;" placeholder="What is the issue?" required>
+                    </div>
+
+                    <!-- FIELD 4: DESCRIPTION WITH JIRA EDITOR TOOLBAR -->
+                    <div class="form-group">
+                        <label style="font-size: 12px; font-weight: 700; text-transform: none; margin-bottom: 6px;">Description</label>
+                        <div class="jira-comment-editor-box" style="border: 1px solid var(--jira-border); border-radius: 6px; overflow: hidden;">
+                            <!-- Editor Toolbar -->
+                            <div class="comment-editor-toolbar" style="display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 6px 10px; border-bottom: 1px solid var(--jira-border);">
+
+                                <button type="button" class="editor-tb-btn" onclick="insertCreateDescFormat('heading')" style="padding: 4px 8px; background: transparent; border: none; font-weight: 700; font-size: 13px; cursor: pointer;">T</button>
+                                <button type="button" class="editor-tb-btn" onclick="insertCreateDescFormat('bold')" style="padding: 4px 8px; background: transparent; border: none; font-weight: 800; font-size: 13px; cursor: pointer;">B ▾</button>
+                                <button type="button" class="editor-tb-btn" onclick="insertCreateDescFormat('list')" style="padding: 4px 8px; background: transparent; border: none; font-size: 13px; cursor: pointer;">List ▾</button>
+                                <button type="button" class="editor-tb-btn" onclick="insertCreateDescFormat('color')" style="padding: 4px 8px; background: transparent; border: none; color: var(--jira-blue); font-weight: 700; font-size: 13px; cursor: pointer;">A</button>
+                                <button type="button" class="editor-tb-btn" onclick="document.getElementById('createAttachments').click()" style="padding: 4px 8px; background: transparent; border: none; font-size: 13px; cursor: pointer;" title="Insert image">🖼️</button>
+                                <button type="button" class="editor-tb-btn" onclick="insertCreateDescFormat('code')" style="padding: 4px 8px; background: transparent; border: none; font-family: monospace; font-size: 12px; cursor: pointer;">&lt;/&gt;</button>
+                                <button type="button" class="editor-tb-btn" onclick="insertCreateDescFormat('emoji')" style="padding: 4px 8px; background: transparent; border: none; font-size: 13px; cursor: pointer;">😊</button>
+                                <button type="button" class="editor-tb-btn" onclick="insertCreateDescFormat('link')" style="padding: 4px 8px; background: transparent; border: none; font-size: 13px; cursor: pointer;">🔗</button>
+                            </div>
+                            <!-- Textarea -->
+                            <textarea id="createDescription" class="form-control comment-editor-textarea" rows="4" style="background: transparent; border: none; padding: 12px; font-size: 14px; resize: vertical;" placeholder="Type @ to mention and notify someone."></textarea>
+                        </div>
+                    </div>
+
+                    <!-- FIELD 5: ASSIGNEE WITH ASSIGN TO ME LINK -->
+                    <div class="form-group">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                            <label style="font-size: 12px; font-weight: 700; text-transform: none; margin: 0;">Assignee</label>
+                            <a href="#" id="btnAssignCreateToMe" data-user-id="{{ request.user.id }}" style="font-size: 12px; color: var(--jira-blue); font-weight: 600; text-decoration: none;" onclick="event.preventDefault(); assignCreateToMe();">Assign to me</a>
+                        </div>
+                        <select id="createAssignee" class="form-control" style="border-radius: 4px; height: 38px;">
+                            <option value="">Automatic (Unassigned)</option>
+                            {% for u in users %}
+                            <option value="{{ u.id }}">{{ u.username }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- FIELD 6: PRIORITY -->
+                    <div class="form-group">
+                        <label style="font-size: 12px; font-weight: 700; text-transform: none; margin-bottom: 6px;">Priority</label>
+                        <select id="createPriority" class="form-control" style="border-radius: 4px; height: 38px;">
+                            {% for prio in priorities %}
+                            <option value="{{ prio.priority_id }}" {% if prio.priority_name == 'Medium' %}selected{% endif %}>{{ prio.priority_name }}</option>
+                            {% endfor %}
+                        </select>
+                        <div style="margin-top: 4px; font-size: 12px; color: var(--jira-blue);">
+                            <a href="#" style="color: var(--jira-blue); text-decoration: none;" onclick="event.preventDefault();">Learn about priority levels ↗</a>
+                        </div>
+                    </div>
+
+                    <!-- FIELD 7: DUE DATE -->
+                    <div class="form-group">
+                        <label style="font-size: 12px; font-weight: 700; text-transform: none; margin-bottom: 6px;">Due date</label>
+                        <input type="date" id="createDueDate" class="form-control" style="border-radius: 4px; height: 38px;">
+                    </div>
+
+                    <!-- FIELD 8: START DATE -->
+                    <div class="form-group">
+                        <label style="font-size: 12px; font-weight: 700; text-transform: none; margin-bottom: 6px;">Start date</label>
+                        <input type="date" id="createStartDate" class="form-control" style="border-radius: 4px; height: 38px;">
+                        <span style="font-size: 12px; color: var(--jira-text-muted); margin-top: 4px;">Allows the planned start date for a piece of work to be set.</span>
+                    </div>
+
+                    <!-- FIELD 9: REPORTER -->
+                    <div class="form-group">
+                        <label style="font-size: 12px; font-weight: 700; text-transform: none; margin-bottom: 6px;">Reporter <span style="color: #ff5630;">*</span></label>
+                        <input type="text" class="form-control" value="{{ request.user.profile.full_name|default:request.user.username }}" readonly style="border-radius: 4px; height: 38px; opacity: 0.9;">
+                    </div>
+
+                    <!-- FIELD 10: ATTACHMENT -->
+                    <div class="form-group">
+                        <label style="font-size: 12px; font-weight: 700; text-transform: none; margin-bottom: 6px;">Attachment</label>
+                        <div class="attachment-upload-container">
+                            <label for="createAttachments" class="attachment-dropzone-box" style="margin-bottom:8px; padding:16px; border:2px dashed var(--jira-border); border-radius:6px; background:var(--jira-bg-subtle); display:flex; align-items:center; justify-content:center; gap:10px; cursor:pointer; transition:all 0.2s ease;">
+                                <input type="file" id="createAttachments" style="display:none;" multiple accept="image/*,.pdf,.doc,.docx,.txt,.zip,.rar,.csv,.xlsx,.mp4">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--jira-blue)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                                <span style="font-size:13px; font-weight:600; color:var(--jira-text-dark);">Click or drag & drop files here to upload</span>
+                            </label>
+
+                            <!-- Live Image & Document Preview Grid -->
+                            <div id="createAttachmentsPreview" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap:10px; margin-top:8px;"></div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- FIXED FOOTER BAR -->
+                <div class="modal-footer" style="padding: 16px 24px; display: flex; align-items: center; justify-content: space-between;">
+                    <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; cursor: pointer; user-select: none;">
+                        <input type="checkbox" id="createAnotherCheck" style="width: 15px; height: 15px; accent-color: #0052cc;">
+                        <span>Create another</span>
+                    </label>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <button type="button" class="btn-secondary btn-close-modal" style="background: transparent; border: none; padding: 8px 16px; font-size: 14px; font-weight: 600; cursor: pointer;">Cancel</button>
+                        <button type="submit" class="btn-primary" style="background: #0052cc; color: #ffffff; border: none; padding: 8px 20px; border-radius: 4px; font-size: 14px; font-weight: 600; cursor: pointer;">Create</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <!-- TICKET DETAIL MODAL MATCHING JIRA EXACTLY -->
+    <div class="modal-overlay" id="ticketDetailModal">
+        <div class="modal-card jira-detail-modal-card">
+            <!-- TOP TOOLBAR & BREADCRUMBS -->
+            <div class="jira-modal-top-bar">
+                <div style="display:flex; align-items:center; gap:8px; font-size:13px; color:var(--jira-text-muted);">
+                    <span>Add epic</span> / <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--jira-blue);"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg> <span id="detailCode" style="font-weight:700; color:var(--jira-blue);">KAN-4</span>
+                </div>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <div style="background:var(--jira-column-bg); border:1px solid var(--jira-border); padding:2px 8px; border-radius:12px; font-size:12px; display:flex; align-items:center; gap:4px; font-weight:600; color:var(--jira-text-dark);">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> <span>1</span>
+                    </div>
+                    <button class="icon-btn" title="More options" onclick="openModalMenu(event, this)">•••</button>
+                    <button type="button" class="btn-close btn-close-modal">&times;</button>
+                </div>
+
+            </div>
+
+            <!-- 2-COLUMN SPLIT BODY -->
+            <div class="jira-modal-split-body">
+                <!-- LEFT MAIN COLUMN -->
+                <div class="jira-modal-left-col">
+                    <!-- Ticket Subject Title -->
+                    <h2 id="detailSubject" style="font-size:22px; font-weight:700; color:var(--jira-text-dark); margin-bottom:14px; line-height:1.2;"></h2>
+
+                    <!-- Action Toolbar - Add Attachment Button -->
+                    <div style="margin-bottom:18px;">
+                        <label for="modalUploadInput" class="btn-add-attachment-action" title="Add Attachment">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+                            <span>Add attachment</span>
+                        </label>
+                    </div>
+
+                    <!-- Description Collapsible Section -->
+                    <div class="detail-section">
+                        <div class="detail-section-title">
+                            <span class="chevron-arrow">❯</span>
+                            <span>Description</span>
+                        </div>
+                        <div id="detailDescription" class="detail-section-body" style="font-size:14px; margin-top:6px; white-space:pre-wrap; color:var(--jira-text-dark);"></div>
+                    </div>
+
+                    <!-- Attachments Section -->
+                    <div class="detail-section">
+                        <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--jira-text-muted);"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                            <span style="font-size:15px; font-weight:700; color:var(--jira-text-dark);">Attachments</span>
+                            <span id="detailAttachmentCount" class="badge-count" style="font-size:12px; opacity:0.8;">0</span>
+                        </div>
+
+                        <!-- Dropzone / Upload Box Area -->
+                        <label for="modalUploadInput" class="attachment-dropzone-box">
+                            <input type="file" id="modalUploadInput" style="display:none;" multiple accept="image/*,.pdf,.doc,.docx,.txt,.zip">
+                            
+                            <!-- Purple circle badge with document icon -->
+                            <div class="att-purple-badge">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="#ffffff"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+                            </div>
+
+                            <!-- Add attachment button -->
+                            <div class="btn-add-attachment">
+                                Add attachment
+                            </div>
+                        </label>
+
+                        <!-- Filter Bar -->
+                        <div class="attachment-filter-bar" style="margin-bottom:10px;">
+                            <button type="button" class="att-filter-btn active" data-filter="all">All</button>
+                            <button type="button" class="att-filter-btn" data-filter="images">Images</button>
+                            <button type="button" class="att-filter-btn" data-filter="documents">Documents</button>
+                            <button type="button" class="att-filter-btn" data-filter="videos">Videos</button>
+                            <button type="button" class="att-filter-btn" data-filter="other">Other</button>
+                        </div>
+
+                        <!-- ATTACHMENTS LIST CONTAINER -->
+                        <div id="detailAttachmentsList" style="display:flex; flex-direction:column; gap:6px;"></div>
+                    </div>
+
+                    <!-- Activity Section -->
+                    <div class="detail-section" style="margin-top:20px; border-bottom:none;">
+                        <div style="font-size:15px; font-weight:700; color:var(--jira-text-dark); margin-bottom:10px;">Activity</div>
+                        <div class="activity-tab-bar">
+                            <button type="button" class="activity-tab-btn" data-tab="all">All</button>
+                            <button type="button" class="activity-tab-btn active" data-tab="comments">Comments</button>
+                            <button type="button" class="activity-tab-btn" data-tab="history">History</button>
+                            <button type="button" class="activity-tab-btn" data-tab="worklog">Work log</button>
+                        </div>
+
+                        <!-- Comments Tab View -->
+                        <div id="activityCommentsView" class="activity-tab-content">
+                            <div style="display:flex; gap:12px; margin-top:14px;">
+                                <div class="user-avatar" style="width:30px; height:30px; font-size:11px; flex-shrink:0; background:#0052cc; color:#ffffff;">PV</div>
+                                <div style="flex:1;">
+                                    <!-- Jira Comment Editor Box -->
+                                    <div class="jira-comment-editor-box">
+                                        <!-- WYSIWYG Editor Toolbar -->
+                                        <div class="comment-editor-toolbar">
+
+                                            
+                                            <button type="button" class="editor-tb-btn" onclick="insertCommentFormat('heading')" title="Text formatting">
+                                                <span style="font-weight:700; font-size:13px;">T</span>
+                                            </button>
+
+                                            <button type="button" class="editor-tb-btn" onclick="insertCommentFormat('bold')" title="Bold">
+                                                <span style="font-weight:800; font-size:13px;">B</span>
+                                                <span style="font-size:10px; margin-left:1px;">▾</span>
+                                            </button>
+
+                                            <button type="button" class="editor-tb-btn" onclick="insertCommentFormat('list')" title="List">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                                                <span style="font-size:10px; margin-left:1px;">▾</span>
+                                            </button>
+
+                                            <button type="button" class="editor-tb-btn boxed" onclick="insertCommentFormat('color')" title="Text color">
+                                                <span style="font-weight:700; font-size:13px; color:#579dff;">A</span>
+                                            </button>
+
+                                            <div class="editor-tb-divider"></div>
+
+                                            <button type="button" class="editor-tb-btn" onclick="triggerCommentFileUpload()" title="Insert attachment">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                                            </button>
+
+                                            <button type="button" class="editor-tb-btn" onclick="insertCommentFormat('code')" title="Code block">
+                                                <span style="font-family:monospace; font-weight:700; font-size:12px;">&lt;/&gt;</span>
+                                            </button>
+
+                                            <button type="button" class="editor-tb-btn" onclick="insertCommentFormat('emoji')" title="Emoji">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+                                            </button>
+
+                                            <button type="button" class="editor-tb-btn" onclick="insertCommentFormat('plus')" title="Insert element">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                            </button>
+
+                                            <button type="button" class="editor-tb-btn" onclick="insertCommentFormat('link')" title="Insert link">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                                            </button>
+
+                                            <div class="editor-tb-divider"></div>
+
+                                            <button type="button" class="editor-tb-btn" onclick="insertCommentFormat('undo')" title="Undo">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5v0a5.5 5.5 0 0 1-5.5 5.5H11"/></svg>
+                                            </button>
+
+                                            <button type="button" class="editor-tb-btn" onclick="insertCommentFormat('redo')" title="Redo">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5v0A5.5 5.5 0 0 0 9.5 20H13"/></svg>
+                                            </button>
+
+                                            <button type="button" class="editor-tb-btn" onclick="insertCommentFormat('history')" title="History">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                                            </button>
+                                        </div>
+
+                                        <!-- Comment Textarea & Hidden Image Input -->
+                                        <input type="file" id="commentImageInput" style="display:none;" accept="image/*" multiple>
+                                        <textarea id="newCommentInput" class="comment-editor-textarea" rows="4" placeholder="Type @ to mention and notify someone."></textarea>
+                                    </div>
+
+                                    <!-- Action Buttons below box -->
+                                    <div style="display:flex; align-items:center; margin-top:12px; gap:8px;">
+                                        <button type="button" id="addCommentBtn" class="btn-jira-save-comment">Save</button>
+                                        <button type="button" class="btn-jira-cancel-comment" onclick="clearCommentInput()">Cancel</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="detailComments" style="margin-top:16px;"></div>
+                        </div>
+
+                        <!-- History Logs Tab View -->
+                        <div id="activityHistoryView" class="activity-tab-content" style="display:none; margin-top:14px;">
+                            <div id="detailHistoryLogs"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RIGHT SIDEBAR COLUMN -->
+                    <div class="jira-modal-right-col">
+                        <!-- Status Dropdown Select & Actions -->
+                        <div style="display:flex; gap:8px; align-items:center; margin-bottom:16px; flex-wrap:wrap;">
+                            <select id="detailStatusSelect" class="filter-select" style="height:34px; font-weight:700; font-size:13px; min-width:110px;">
+                                <!-- Dynamically loaded in JS -->
+                            </select>
+                            <button class="icon-btn-bordered" title="Automations">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                            </button>
+                        </div>
+
+                        <!-- Details Card Box -->
+                        <div class="right-details-card">
+                            <div class="right-card-header">
+                                <span class="chevron-arrow">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                                </span>
+                                <span>Details</span>
+                                <span style="margin-left:auto; cursor:pointer; display:inline-flex; align-items:center; color:var(--jira-text-muted);" title="Configure Details">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                                </span>
+                            </div>
+                            <div class="right-card-body">
+                                <div class="detail-field-row">
+                                    <span class="field-label">Assignee</span>
+                                    <div class="field-value user-profile-field-value">
+                                        <div id="detailAssigneeAvatar" class="user-avatar">UN</div>
+                                        <span id="detailAssignee" class="truncate-text" title="Unassigned">Unassigned</span>
+                                        <a href="#" id="btnAssignToMe" class="btn-assign-me">Assign to me</a>
+                                    </div>
+                                </div>
+                                <div class="detail-field-row">
+                                    <span class="field-label">Parent</span>
+                                    <div class="field-value">None</div>
+                                </div>
+                                <div class="detail-field-row">
+                                    <span class="field-label">Priority</span>
+                                    <div class="field-value" id="detailPriorityBox">
+                                        <span id="detailPriority">Medium</span>
+                                    </div>
+                                </div>
+                                <div class="detail-field-row">
+                                    <span class="field-label">Category</span>
+                                    <div class="field-value" id="detailCategory">Technical</div>
+                                </div>
+                                <div class="detail-field-row">
+                                    <span class="field-label">Labels</span>
+                                    <div class="field-value">None</div>
+                                </div>
+                                <div class="detail-field-row">
+                                    <span class="field-label">Due date</span>
+                                    <div class="field-value" id="detailDueDate">None</div>
+                                </div>
+                                <div class="detail-field-row">
+                                    <span class="field-label">Team</span>
+                                    <div class="field-value">None</div>
+                                </div>
+                                <div class="detail-field-row">
+                                    <span class="field-label">Start date</span>
+                                    <div class="field-value" id="detailStartDate">None</div>
+                                </div>
+
+                                <div class="detail-field-row">
+                                    <span class="field-label">Reporter</span>
+                                    <div class="field-value user-profile-field-value">
+                                        <div id="detailCreatorAvatar" class="user-avatar">PV</div>
+                                        <span id="detailCreator" class="truncate-text" title="Reporter">Reporter</span>
+                                    </div>
+                                </div>
+                                <div class="detail-field-row">
+                                    <span class="field-label">Created</span>
+                                    <div class="field-value" id="detailCreated">Aug 04, 2026</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+            </div>
+        </div>
+    </div>
+    <!-- SHARED FLOATING CARD CONTEXT MENU (rendered at body level, positioned by JS) -->
+    <div id="cardContextMenu" style="display:none; position:fixed; z-index:9999999; min-width:200px; background:#1e1e22; border:1px solid #3a3a42; border-radius:8px; box-shadow:0 8px 32px rgba(0,0,0,0.5); padding:6px 0; font-size:13px; color:#cecfd2;">
+
+        <!-- Edit Ticket Option -->
+        <button type="button" id="cardMenuEdit" onclick="cardMenuEditTicket()" style="display:flex; align-items:center; gap:10px; width:100%; padding:8px 14px; background:transparent; border:none; color:#579dff; font-size:13px; cursor:pointer; text-align:left; font-weight:600;">
+            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+            <span>Edit Ticket</span>
+        </button>
+        <div style="height:1px; background:#3a3a42; margin:4px 0;"></div>
+        <!-- Change Status section -->
+        <div style="padding:6px 14px 4px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.6px; color:#626f86;">Change Status</div>
+        <div id="cardMenuStatuses"></div>
+        <!-- Divider -->
+        <div style="height:1px; background:#3a3a42; margin:6px 0;"></div>
+        <!-- Delete -->
+        <button type="button" id="cardMenuDelete" onclick="cardMenuDeleteTicket()" style="display:flex; align-items:center; gap:10px; width:100%; padding:8px 14px; background:transparent; border:none; color:#ff5630; font-size:13px; cursor:pointer; text-align:left;">
+            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+            <span>Delete</span>
+        </button>
+    </div>
+
+    <!-- SHARED FLOATING PRIORITY PICKER (rendered at body level, positioned by JS) -->
+    <div id="priorityPickerMenu" style="display:none; position:fixed; z-index:99999; min-width:170px; background:#1e1e22; border:1px solid #3a3a42; border-radius:8px; box-shadow:0 8px 32px rgba(0,0,0,0.5); padding:6px 0; font-size:13px; color:#cecfd2;">
+        <div style="padding:6px 14px 4px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.6px; color:#626f86;">Priority</div>
+        <div id="priorityPickerList"></div>
+    </div>
+
+    <!-- ADD PEOPLE TO TEAM VATANA MODAL (MATCHING JIRA SCREENSHOT) -->
+    <div class="modal-overlay" id="addUserModal" style="display:none; z-index:999999;">
+        <div class="modal-card" style="max-width: 480px; padding: 24px;">
+            <div class="modal-header" style="border-bottom:none; padding-bottom:0; margin-bottom:18px;">
+                <h3 class="modal-title" style="font-size:18px; font-weight:600; color:var(--jira-text-dark);">Add people to Team Vatana</h3>
+                <button type="button" class="btn-close btn-close-user-modal" style="background:none; border:none; color:var(--jira-text-muted); font-size:20px; cursor:pointer;">&times;</button>
+            </div>
+            <form id="addUserForm">
+                <div class="modal-body" style="padding:0;">
+                    <div id="addUserAlert" style="display:none; padding:10px 14px; border-radius:6px; font-size:13px; margin-bottom:14px;"></div>
+                    
+                    <!-- Names or emails field -->
+                    <div class="form-group" style="margin-bottom:18px;">
+                        <label style="font-size:12px; font-weight:700; color:var(--jira-text-muted); text-transform:uppercase; letter-spacing:0.4px; margin-bottom:6px; display:block;">Names or emails <span style="color:#ff5630;">*</span></label>
+                        <input type="text" id="addEmailOrName" class="form-control" placeholder="e.g., Maria, maria@company.com" required style="height:40px; font-size:13px; border-radius:4px;">
+                        <div style="font-size:12px; color:var(--jira-text-muted); margin-top:6px;">Search by name, enter an email, or paste a list</div>
+                    </div>
+
+                    <!-- Role selector with dynamic description -->
+                    <div class="form-group" style="margin-bottom:18px;">
+                        <label style="font-size:12px; font-weight:700; color:var(--jira-text-muted); text-transform:uppercase; letter-spacing:0.4px; margin-bottom:6px; display:block;">Role <span style="color:#ff5630;">*</span></label>
+                        <select id="addRoleSelect" class="form-control" onchange="updateRoleDescription()" style="height:40px; font-size:13px; border-radius:4px; font-weight:600; cursor:pointer;">
+                            <option value="Member" selected>Member</option>
+                            <option value="Administrator">Administrator</option>
+                            <option value="Support Agent">Support Agent</option>
+                            <option value="Viewer">Viewer</option>
+                        </select>
+                        <div id="roleDescriptionBox" style="font-size:12px; color:var(--jira-text-muted); margin-top:8px; line-height:1.4; background:rgba(255,255,255,0.03); padding:8px 12px; border-radius:6px; border:1px solid var(--jira-border);">
+                            Members are part of the team, and can add, edit, and collaborate on all work.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer" style="display:flex; align-items:center; justify-content:space-between; margin-top:24px; padding-top:16px; border-top:1px solid var(--jira-border);">
+                    <button type="button" class="btn-copy-link" onclick="copyInviteLink()" style="display:inline-flex; align-items:center; gap:6px; background:none; border:none; color:var(--jira-text-muted); font-size:13px; font-weight:600; cursor:pointer;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                        <span>Copy link</span>
+                    </button>
+                    <div style="display:flex; gap:10px;">
+                        <button type="button" class="btn-secondary btn-close-user-modal" style="height:36px; padding:0 16px; border-radius:4px; font-weight:600;">Cancel</button>
+                        <button type="submit" class="btn-primary" id="btnSubmitAddUser" style="height:36px; padding:0 22px; background:#0052cc; border-radius:4px; font-weight:600;">Add</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- EDIT USER PROFILE MODAL (JIRA PROFILE & SETTINGS) -->
+    <div class="modal-overlay" id="editProfileModal" style="display:none; z-index:999999;">
+        <div class="modal-card" style="width: 620px; max-width: 92vw; padding: 0; overflow: hidden; border-radius: 12px; box-shadow: 0 16px 48px rgba(0,0,0,0.4); display: flex; flex-direction: column;">
+            <!-- Modal Header -->
+            <div class="modal-header" style="padding: 18px 24px 14px; display: flex; align-items: center; justify-content: space-between;">
+                <h3 class="modal-title" style="font-size: 18px; font-weight: 600; margin: 0;">Profile and settings</h3>
+                <button type="button" class="btn-close" id="btnCloseEditProfileModal" style="background: none; border: none; font-size: 22px; cursor: pointer; line-height: 1;">&times;</button>
+            </div>
+
+            <form id="editProfileForm" enctype="multipart/form-data">
+                <div class="modal-body" style="padding: 20px 24px; max-height: 75vh; overflow-y: auto;">
+                    <div id="editProfileAlert" style="display:none; padding: 10px 14px; border-radius: 6px; font-size: 13px; margin-bottom: 16px;"></div>
+
+                    <!-- SECTION 1: PROFILE PHOTO AND HEADER IMAGE -->
+                    <div style="font-size: 15px; font-weight: 700; color: var(--jira-text-dark); margin-bottom: 12px;">Profile photo and header image</div>
+                    
+                    <!-- HEADER BANNER & AVATAR PREVIEW CONTAINER -->
+                    <div class="profile-box-container" style="border-radius: 8px; overflow: hidden; margin-bottom: 24px;">
+                        <!-- HEADER BANNER -->
+                        <div id="profileHeaderBanner" style="height: 90px; background: {{ user.profile.header_color|default:'#85b8ff' }}; transition: background 0.2s ease; position: relative;">
+                        </div>
+                        
+                        <!-- AVATAR & CONTROLS BAR -->
+                        <div style="padding: 0 20px 16px; position: relative; display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-top: -36px;">
+                            <!-- AVATAR CIRCLE -->
+                            <div style="display: flex; align-items: flex-end; gap: 16px;">
+                                <div id="profileAvatarPreview" style="width: 72px; height: 72px; border-radius: 50%; border: 4px solid var(--jira-bg-light); background: {{ user.profile.avatar_color|default:'#0052cc' }}; color: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 700; box-shadow: 0 4px 12px rgba(0,0,0,0.3); overflow: hidden; position: relative; flex-shrink: 0;">
+                                    <img id="profileAvatarImg" src="{{ user.profile.profile_image|default:'' }}" style="width:100%; height:100%; object-fit:cover; display:{% if user.profile.profile_image %}block{% else %}none{% endif %};">
+                                    <span id="profileAvatarInitials" style="display:{% if user.profile.profile_image %}none{% else %}inline-block{% endif %};">{{ user.profile.full_name|default:user.username|slice:":2"|upper }}</span>
+                                </div>
+                                
+                                <!-- UPLOAD / REMOVE ACTIONS -->
+                                <div style="margin-bottom: 4px; display: flex; align-items: center; gap: 8px;">
+                                    <label for="profilePhotoInput" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; background: #0052cc; color: #ffffff; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.15s ease;">
+                                        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                                        Upload Photo
+                                    </label>
+                                    <input type="file" id="profilePhotoInput" name="profile_image" accept="image/*" style="display: none;">
+                                    <button type="button" id="btnRemovePhoto" style="padding: 6px 14px; background: transparent; border: 1px solid var(--jira-border); color: #ff5630; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer;">Remove</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- COLOR PICKERS ROW -->
+                        <div class="profile-color-picker-row" style="padding: 14px 20px 16px; display: flex; flex-wrap: wrap; gap: 24px;">
+                            <!-- Avatar Circle Color Picker -->
+                            <div>
+                                <label style="display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--jira-text-muted); margin-bottom: 6px;">Avatar Color</label>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <input type="color" id="avatarColorInput" name="avatar_color" value="{{ user.profile.avatar_color|default:'#0052cc' }}" style="width: 30px; height: 30px; border: none; border-radius: 6px; background: transparent; cursor: pointer;">
+                                    <div style="display: flex; gap: 5px;">
+                                        <button type="button" class="color-preset-btn" data-type="avatar" data-color="#0052cc" title="Blue" style="width: 22px; height: 22px; border-radius: 50%; background: #0052cc; border: 2px solid #ffffff; cursor: pointer;"></button>
+                                        <button type="button" class="color-preset-btn" data-type="avatar" data-color="#ff5630" title="Red" style="width: 22px; height: 22px; border-radius: 50%; background: #ff5630; border: 2px solid transparent; cursor: pointer;"></button>
+                                        <button type="button" class="color-preset-btn" data-type="avatar" data-color="#36b37e" title="Green" style="width: 22px; height: 22px; border-radius: 50%; background: #36b37e; border: 2px solid transparent; cursor: pointer;"></button>
+                                        <button type="button" class="color-preset-btn" data-type="avatar" data-color="#6554c0" title="Purple" style="width: 22px; height: 22px; border-radius: 50%; background: #6554c0; border: 2px solid transparent; cursor: pointer;"></button>
+                                        <button type="button" class="color-preset-btn" data-type="avatar" data-color="#ffab00" title="Yellow" style="width: 22px; height: 22px; border-radius: 50%; background: #ffab00; border: 2px solid transparent; cursor: pointer;"></button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Header Banner Color Picker -->
+                            <div>
+                                <label style="display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--jira-text-muted); margin-bottom: 6px;">Header Banner Color</label>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <input type="color" id="headerColorInput" name="header_color" value="{{ user.profile.header_color|default:'#85b8ff' }}" style="width: 30px; height: 30px; border: none; border-radius: 6px; background: transparent; cursor: pointer;">
+                                    <div style="display: flex; gap: 5px;">
+                                        <button type="button" class="color-preset-btn" data-type="header" data-color="#85b8ff" title="Sky Blue" style="width: 22px; height: 22px; border-radius: 50%; background: #85b8ff; border: 2px solid #ffffff; cursor: pointer;"></button>
+                                        <button type="button" class="color-preset-btn" data-type="header" data-color="#ffbdad" title="Peach" style="width: 22px; height: 22px; border-radius: 50%; background: #ffbdad; border: 2px solid transparent; cursor: pointer;"></button>
+                                        <button type="button" class="color-preset-btn" data-type="header" data-color="#abf5d1" title="Mint" style="width: 22px; height: 22px; border-radius: 50%; background: #abf5d1; border: 2px solid transparent; cursor: pointer;"></button>
+                                        <button type="button" class="color-preset-btn" data-type="header" data-color="#dcdfe4" title="Light Slate" style="width: 22px; height: 22px; border-radius: 50%; background: #dcdfe4; border: 2px solid transparent; cursor: pointer;"></button>
+                                        <button type="button" class="color-preset-btn" data-type="header" data-color="#091e42" title="Deep Navy" style="width: 22px; height: 22px; border-radius: 50%; background: #091e42; border: 2px solid transparent; cursor: pointer;"></button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SECTION 2: ABOUT YOU -->
+                    <div style="font-size: 15px; font-weight: 700; color: var(--jira-text-dark); margin-bottom: 14px;">About you</div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                        <div>
+                            <label for="editFullName" style="display: block; font-size: 12px; font-weight: 600; color: var(--jira-text-muted); margin-bottom: 6px;">Full name</label>
+                            <input type="text" id="editFullName" name="full_name" class="form-control" value="{{ user.profile.full_name|default:user.username }}" placeholder="Enter full name" style="width:100%; height:38px; border-radius:6px; padding:0 12px; font-size:13px;">
+                        </div>
+                        <div>
+                            <label for="editPublicName" style="display: block; font-size: 12px; font-weight: 600; color: var(--jira-text-muted); margin-bottom: 6px;">Public name</label>
+                            <input type="text" id="editPublicName" name="public_name" class="form-control" value="{{ user.profile.public_name|default:user.username }}" placeholder="Enter public name" style="width:100%; height:38px; border-radius:6px; padding:0 12px; font-size:13px;">
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                        <div>
+                            <label for="editPronouns" style="display: block; font-size: 12px; font-weight: 600; color: var(--jira-text-muted); margin-bottom: 6px;">Pronouns</label>
+                            <input type="text" id="editPronouns" name="pronouns" class="form-control" value="{{ user.profile.pronouns|default:'' }}" placeholder="e.g. he/him, she/her, they/them" style="width:100%; height:38px; border-radius:6px; padding:0 12px; font-size:13px;">
+                        </div>
+                        <div>
+                            <label for="editJobTitle" style="display: block; font-size: 12px; font-weight: 600; color: var(--jira-text-muted); margin-bottom: 6px;">Job title</label>
+                            <input type="text" id="editJobTitle" name="job_title" class="form-control" value="{{ user.profile.job_title|default:'' }}" placeholder="e.g. Software Engineer" style="width:100%; height:38px; border-radius:6px; padding:0 12px; font-size:13px;">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal Footer -->
+                <div class="modal-footer" style="padding: 14px 24px; display: flex; justify-content: flex-end; gap: 10px;">
+                    <button type="button" class="btn-cancel" id="btnCancelEditProfile" style="padding: 8px 16px; background: transparent; border: 1px solid var(--jira-border); border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;">Cancel</button>
+                    <button type="submit" id="btnSaveProfile" style="padding: 8px 22px; background: #0052cc; color: #ffffff; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.15s ease;">Save changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- EDIT TICKET MODAL (EXACT JIRA UI) -->
+    <div class="modal-overlay" id="editTicketModal" style="display:none; z-index:999999;">
+        <div class="modal-card jira-create-modal-card" style="width: 720px; max-width: 92vw; max-height: 90vh; border-radius: 8px; box-shadow: 0 16px 48px rgba(0,0,0,0.4); display: flex; flex-direction: column; overflow: hidden;">
+            <!-- HEADER BAR -->
+            <div class="modal-header" style="padding: 16px 24px; display: flex; align-items: center; justify-content: space-between;">
+                <h3 class="modal-title" style="font-size: 20px; font-weight: 700; margin: 0;">
+                    Edit Ticket Details <span id="editTicketCodeBadge" style="color: var(--jira-blue); font-size: 16px; margin-left: 6px;"></span>
+                </h3>
+                <button type="button" class="btn-close" onclick="closeEditTicketModal()" style="background:none; border:none; font-size:22px; cursor:pointer; line-height:1;">&times;</button>
+            </div>
+
+            <form id="editTicketForm" style="display: flex; flex-direction: column; flex: 1; overflow: hidden;">
+                <div class="modal-body" style="padding: 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px;">
+                    <div id="editTicketAlert" style="display:none; padding:10px 14px; border-radius:6px; font-size:13px;"></div>
+
+                    <!-- SUMMARY -->
+                    <div class="form-group">
+                        <label style="font-size: 12px; font-weight: 700; text-transform: none; margin-bottom: 6px;">Summary <span style="color: #ff5630;">*</span></label>
+                        <input type="text" id="editSubject" class="form-control" style="border-radius: 4px; height: 40px; font-size: 14px;" placeholder="What is the issue?" required>
+                    </div>
+
+                    <!-- DESCRIPTION WITH JIRA EDITOR TOOLBAR -->
+                    <div class="form-group">
+                        <label style="font-size: 12px; font-weight: 700; text-transform: none; margin-bottom: 6px;">Description</label>
+                        <div class="jira-comment-editor-box" style="border: 1px solid var(--jira-border); border-radius: 6px; overflow: hidden;">
+                            <div class="comment-editor-toolbar" style="display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 6px 10px; border-bottom: 1px solid var(--jira-border);">
+
+                                <button type="button" class="editor-tb-btn" onclick="insertEditDescFormat('heading')" style="padding: 4px 8px; background: transparent; border: none; font-weight: 700; font-size: 13px; cursor: pointer;">T</button>
+                                <button type="button" class="editor-tb-btn" onclick="insertEditDescFormat('bold')" style="padding: 4px 8px; background: transparent; border: none; font-weight: 800; font-size: 13px; cursor: pointer;">B ▾</button>
+                                <button type="button" class="editor-tb-btn" onclick="insertEditDescFormat('list')" style="padding: 4px 8px; background: transparent; border: none; font-size: 13px; cursor: pointer;">List ▾</button>
+                                <button type="button" class="editor-tb-btn" onclick="insertEditDescFormat('color')" style="padding: 4px 8px; background: transparent; border: none; color: var(--jira-blue); font-weight: 700; font-size: 13px; cursor: pointer;">A</button>
+                                <button type="button" class="editor-tb-btn" onclick="insertEditDescFormat('code')" style="padding: 4px 8px; background: transparent; border: none; font-family: monospace; font-size: 12px; cursor: pointer;">&lt;/&gt;</button>
+                                <button type="button" class="editor-tb-btn" onclick="insertEditDescFormat('emoji')" style="padding: 4px 8px; background: transparent; border: none; font-size: 13px; cursor: pointer;">😊</button>
+                                <button type="button" class="editor-tb-btn" onclick="insertEditDescFormat('link')" style="padding: 4px 8px; background: transparent; border: none; font-size: 13px; cursor: pointer;">🔗</button>
+                            </div>
+                            <textarea id="editDescription" class="form-control comment-editor-textarea" rows="4" style="background: transparent; border: none; padding: 12px; font-size: 14px; resize: vertical;" placeholder="Type problem description..."></textarea>
+                        </div>
+                    </div>
+
+                    <!-- ASSIGNEE & PRIORITY GRID -->
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px;">
+                        <!-- ASSIGNEE -->
+                        <div class="form-group">
+                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                                <label style="font-size: 12px; font-weight: 700; text-transform: none; margin: 0;">Assignee</label>
+                                <a href="#" id="btnAssignEditToMe" data-user-id="{{ request.user.id }}" style="font-size: 12px; color: var(--jira-blue); font-weight: 600; text-decoration: none;" onclick="event.preventDefault(); assignEditToMe();">Assign to me</a>
+                            </div>
+                            <select id="editAssignee" class="form-control" style="border-radius: 4px; height: 38px;">
+                                <option value="">Automatic (Unassigned)</option>
+                                {% for u in users %}
+                                <option value="{{ u.id }}">{{ u.username }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- PRIORITY (Lowest, Low, Medium, High, Highest) -->
+                        <div class="form-group">
+                            <label style="font-size: 12px; font-weight: 700; text-transform: none; margin-bottom: 6px;">Priority</label>
+                            <select id="editPriority" class="form-control" style="border-radius: 4px; height: 38px;">
+                                {% for p in priorities %}
+                                <option value="{{ p.priority_id }}">{{ p.priority_name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- CATEGORY & START DATE GRID -->
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px;">
+                        <!-- CATEGORY -->
+                        <div class="form-group">
+                            <label style="font-size: 12px; font-weight: 700; text-transform: none; margin-bottom: 6px;">Category</label>
+                            <div style="display: flex; gap: 6px; align-items: center;">
+                                <select id="editCategory" class="form-control" style="flex:1; border-radius: 4px; height: 38px;">
+                                    {% for c in categories %}
+                                    <option value="{{ c.category_id }}">{{ c.category_name }}</option>
+                                    {% endfor %}
+                                </select>
+                                <button type="button" id="btnInlineAddCategoryEdit" title="Add new category" style="height: 38px; padding: 0 10px; display: inline-flex; align-items: center; justify-content: center; background: #0052cc; color: #ffffff; border: none; border-radius: 4px; cursor: pointer; flex-shrink: 0;">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- START DATE -->
+                        <div class="form-group">
+                            <label style="font-size: 12px; font-weight: 700; text-transform: none; margin-bottom: 6px;">Start Date</label>
+                            <input type="date" id="editStartDate" class="form-control" style="border-radius: 4px; height: 38px;">
+                        </div>
+                    </div>
+
+                    <!-- DUE DATE -->
+                    <div class="form-group">
+                        <label style="font-size: 12px; font-weight: 700; text-transform: none; margin-bottom: 6px;">Due Date</label>
+                        <input type="date" id="editDueDate" class="form-control" style="border-radius: 4px; height: 38px;">
+                    </div>
+
+                </div>
+
+                <!-- FOOTER -->
+                <div class="modal-footer" style="padding: 16px 24px; display: flex; align-items: center; justify-content: flex-end; gap: 10px;">
+                    <button type="button" class="btn-secondary" onclick="closeEditTicketModal()" style="background: transparent; border: 1px solid var(--jira-border); padding: 8px 16px; font-size: 14px; font-weight: 600; cursor: pointer;">Cancel</button>
+                    <button type="submit" class="btn-primary" id="btnSubmitEditTicket" style="background: #0052cc; color: #ffffff; border: none; padding: 8px 20px; border-radius: 4px; font-size: 14px; font-weight: 600; cursor: pointer;">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <script src="{% static 'js/kanban.js' %}"></script>
+    <script>
+        (function() {
+            // Helper for CSRF Token
+            function getCookie(name) {
+                let cookieValue = null;
+                if (document.cookie && document.cookie !== '') {
+                    const cookies = document.cookie.split(';');
+                    for (let i = 0; i < cookies.length; i++) {
+                        const cookie = cookies[i].trim();
+                        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                            break;
+                        }
+                    }
+                }
+                return cookieValue;
+            }
+
+            // User Profile Dropdown Toggle
+            const userAvatarBtn = document.getElementById('userAvatarBtn');
+            const userDropdownMenu = document.getElementById('userDropdownMenu');
+            if (userAvatarBtn && userDropdownMenu) {
+                userAvatarBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    userDropdownMenu.style.display = userDropdownMenu.style.display === 'block' ? 'none' : 'block';
+                });
+                document.addEventListener('click', (e) => {
+                    if (!userDropdownMenu.contains(e.target) && e.target !== userAvatarBtn) {
+                        userDropdownMenu.style.display = 'none';
+                    }
+                });
+            }
+
+            // Edit Profile Modal Handling
+            const btnOpenEditProfileModal = document.getElementById('btnOpenEditProfileModal');
+            const editProfileModal = document.getElementById('editProfileModal');
+            const btnCloseEditProfileModal = document.getElementById('btnCloseEditProfileModal');
+            const btnCancelEditProfile = document.getElementById('btnCancelEditProfile');
+            const editProfileForm = document.getElementById('editProfileForm');
+            const editProfileAlert = document.getElementById('editProfileAlert');
+            const avatarColorInput = document.getElementById('avatarColorInput');
+            const headerColorInput = document.getElementById('headerColorInput');
+            const profileHeaderBanner = document.getElementById('profileHeaderBanner');
+            const profileAvatarPreview = document.getElementById('profileAvatarPreview');
+            const profilePhotoInput = document.getElementById('profilePhotoInput');
+            const btnRemovePhoto = document.getElementById('btnRemovePhoto');
+            const profileAvatarImg = document.getElementById('profileAvatarImg');
+            const profileAvatarInitials = document.getElementById('profileAvatarInitials');
+
+            let removePhotoFlag = false;
+
+            async function loadProfileData() {
+                try {
+                    const res = await fetch('/api/profile/');
+                    const data = await res.json();
+                    if (data.success && data.profile) {
+                        const p = data.profile;
+                        if (document.getElementById('editFullName')) document.getElementById('editFullName').value = p.full_name || '';
+                        if (document.getElementById('editPublicName')) document.getElementById('editPublicName').value = p.public_name || p.username || '';
+                        if (document.getElementById('editPronouns')) document.getElementById('editPronouns').value = p.pronouns || '';
+                        if (document.getElementById('editJobTitle')) document.getElementById('editJobTitle').value = p.job_title || '';
+                        
+                        if (avatarColorInput) avatarColorInput.value = p.avatar_color || '#0052cc';
+                        if (headerColorInput) headerColorInput.value = p.header_color || '#85b8ff';
+                        
+                        if (profileHeaderBanner) profileHeaderBanner.style.background = p.header_color || '#85b8ff';
+                        if (profileAvatarPreview) profileAvatarPreview.style.background = p.avatar_color || '#0052cc';
+
+                        if (p.profile_image && !removePhotoFlag) {
+                            if (profileAvatarImg) {
+                                profileAvatarImg.src = p.profile_image;
+                                profileAvatarImg.style.display = 'block';
+                            }
+                            if (profileAvatarInitials) profileAvatarInitials.style.display = 'none';
+                        } else {
+                            if (profileAvatarImg) profileAvatarImg.style.display = 'none';
+                            if (profileAvatarInitials) {
+                                profileAvatarInitials.textContent = p.initials || 'PV';
+                                profileAvatarInitials.style.display = 'inline-block';
+                            }
+                        }
+                    }
+                } catch (err) {
+                    console.error('Error loading profile:', err);
+                }
+            }
+
+            if (btnOpenEditProfileModal && editProfileModal) {
+                btnOpenEditProfileModal.addEventListener('click', () => {
+                    if (userDropdownMenu) userDropdownMenu.style.display = 'none';
+                    editProfileModal.style.display = 'flex';
+                    removePhotoFlag = false;
+                    if (editProfileAlert) editProfileAlert.style.display = 'none';
+                    loadProfileData();
+                });
+            }
+
+            function closeEditProfileModal() {
+                if (editProfileModal) editProfileModal.style.display = 'none';
+            }
+            if (btnCloseEditProfileModal) btnCloseEditProfileModal.addEventListener('click', closeEditProfileModal);
+            if (btnCancelEditProfile) btnCancelEditProfile.addEventListener('click', closeEditProfileModal);
+
+            // Color Presets Handler
+            document.querySelectorAll('.color-preset-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const type = btn.dataset.type;
+                    const color = btn.dataset.color;
+                    if (type === 'avatar') {
+                        if (avatarColorInput) avatarColorInput.value = color;
+                        if (profileAvatarPreview) profileAvatarPreview.style.background = color;
+                        document.querySelectorAll('.color-preset-btn[data-type="avatar"]').forEach(b => b.style.borderColor = 'transparent');
+                        btn.style.borderColor = '#ffffff';
+                    } else if (type === 'header') {
+                        if (headerColorInput) headerColorInput.value = color;
+                        if (profileHeaderBanner) profileHeaderBanner.style.background = color;
+                        document.querySelectorAll('.color-preset-btn[data-type="header"]').forEach(b => b.style.borderColor = 'transparent');
+                        btn.style.borderColor = '#ffffff';
+                    }
+                });
+            });
+
+            if (avatarColorInput) {
+                avatarColorInput.addEventListener('input', (e) => {
+                    if (profileAvatarPreview) profileAvatarPreview.style.background = e.target.value;
+                });
+            }
+            if (headerColorInput) {
+                headerColorInput.addEventListener('input', (e) => {
+                    if (profileHeaderBanner) profileHeaderBanner.style.background = e.target.value;
+                });
+            }
+
+            if (profilePhotoInput) {
+                profilePhotoInput.addEventListener('change', (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        removePhotoFlag = false;
+                        const url = URL.createObjectURL(file);
+                        if (profileAvatarImg) {
+                            profileAvatarImg.src = url;
+                            profileAvatarImg.style.display = 'block';
+                        }
+                        if (profileAvatarInitials) profileAvatarInitials.style.display = 'none';
+                    }
+                });
+            }
+
+            if (btnRemovePhoto) {
+                btnRemovePhoto.addEventListener('click', () => {
+                    removePhotoFlag = true;
+                    if (profilePhotoInput) profilePhotoInput.value = '';
+                    if (profileAvatarImg) profileAvatarImg.style.display = 'none';
+                    if (profileAvatarInitials) profileAvatarInitials.style.display = 'inline-block';
+                });
+            }
+
+            if (editProfileForm) {
+                editProfileForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    if (editProfileAlert) editProfileAlert.style.display = 'none';
+
+                    const formData = new FormData();
+                    formData.append('full_name', document.getElementById('editFullName').value.trim());
+                    formData.append('public_name', document.getElementById('editPublicName').value.trim());
+                    formData.append('pronouns', document.getElementById('editPronouns').value.trim());
+                    formData.append('job_title', document.getElementById('editJobTitle').value.trim());
+                    formData.append('avatar_color', avatarColorInput ? avatarColorInput.value : '#0052cc');
+                    formData.append('header_color', headerColorInput ? headerColorInput.value : '#85b8ff');
+                    formData.append('remove_photo', removePhotoFlag ? 'true' : 'false');
+
+                    if (profilePhotoInput && profilePhotoInput.files[0]) {
+                        formData.append('profile_image', profilePhotoInput.files[0]);
+                    }
+
+                    try {
+                        const res = await fetch('/api/profile/update/', {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRFToken': getCookie('csrftoken') || ''
+                            },
+                            body: formData
+                        });
+                        const data = await res.json();
+                        if (data.success) {
+                            editProfileAlert.style.background = 'rgba(34, 197, 94, 0.2)';
+                            editProfileAlert.style.color = '#86efac';
+                            editProfileAlert.style.border = '1px solid rgba(34, 197, 94, 0.4)';
+                            editProfileAlert.innerText = 'Profile updated successfully!';
+                            editProfileAlert.style.display = 'block';
+
+                            // Live update topbar avatar & dropdown header
+                            const topAvatarBtn = document.getElementById('userAvatarBtn');
+                            if (topAvatarBtn) {
+                                topAvatarBtn.style.background = data.profile.avatar_color;
+                                if (data.profile.profile_image) {
+                                    topAvatarBtn.innerHTML = `<img src="${data.profile.profile_image}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`;
+                                } else {
+                                    topAvatarBtn.innerHTML = `<span style="color:#ffffff; font-weight:700;">${data.profile.initials}</span>`;
+                                }
+                            }
+                            const dropdownAvatar = document.querySelector('.user-dropdown-avatar');
+                            if (dropdownAvatar) {
+                                dropdownAvatar.style.background = data.profile.avatar_color;
+                                if (data.profile.profile_image) {
+                                    dropdownAvatar.innerHTML = `<img src="${data.profile.profile_image}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`;
+                                } else {
+                                    dropdownAvatar.innerHTML = `<span style="color:#ffffff; font-weight:700;">${data.profile.initials}</span>`;
+                                }
+                            }
+                            const dropdownHeaderName = document.getElementById('dropdownHeaderName');
+                            if (dropdownHeaderName) dropdownHeaderName.textContent = data.profile.user_display;
+
+                            setTimeout(() => {
+                                closeEditProfileModal();
+                                location.reload();
+                            }, 800);
+                        } else {
+                            editProfileAlert.style.background = 'rgba(239, 68, 68, 0.2)';
+                            editProfileAlert.style.color = '#fca5a5';
+                            editProfileAlert.style.border = '1px solid rgba(239, 68, 68, 0.4)';
+                            editProfileAlert.innerText = data.error || 'Failed to update profile.';
+                            editProfileAlert.style.display = 'block';
+                        }
+                    } catch (err) {
+                        editProfileAlert.style.background = 'rgba(239, 68, 68, 0.2)';
+                        editProfileAlert.style.color = '#fca5a5';
+                        editProfileAlert.style.border = '1px solid rgba(239, 68, 68, 0.4)';
+                        editProfileAlert.innerText = 'Network error while updating profile.';
+                        editProfileAlert.style.display = 'block';
+                    }
+                });
+            }
+
+            // Add User Modal Handling
+            const btnOpenAddUserModal = document.getElementById('btnOpenAddUserModal');
+            const addUserModal = document.getElementById('addUserModal');
+            const closeUserModalBtns = document.querySelectorAll('.btn-close-user-modal');
+            const addUserForm = document.getElementById('addUserForm');
+            const addUserAlert = document.getElementById('addUserAlert');
+
+            if (btnOpenAddUserModal && addUserModal) {
+                btnOpenAddUserModal.addEventListener('click', () => {
+                    if (userDropdownMenu) userDropdownMenu.style.display = 'none';
+                    addUserModal.style.display = 'flex';
+                });
+            }
+
+            closeUserModalBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    if (addUserModal) addUserModal.style.display = 'none';
+                });
+            });
+
+            if (addUserForm) {
+                addUserForm.addEventListener('click', (e) => e.stopPropagation());
+                addUserForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const fullName = document.getElementById('addFullname').value.trim();
+                    const username = document.getElementById('addUsername').value.trim();
+                    const email = document.getElementById('addEmail').value.trim();
+                    const password = document.getElementById('addPassword').value.trim();
+                    const roleName = document.getElementById('addRole').value;
+                    const department = document.getElementById('addDepartment').value.trim();
+
+                    addUserAlert.style.display = 'none';
+
+                    try {
+                        const response = await fetch('/api/users/create/', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': getCookie('csrftoken') || ''
+                            },
+                            body: JSON.stringify({
+                                full_name: fullName,
+                                username: username,
+                                email: email,
+                                password: password,
+                                role_name: roleName,
+                                department: department
+                            })
+                        });
+
+                        const data = await response.json();
+                        if (data.success) {
+                            addUserAlert.className = '';
+                            addUserAlert.style.background = 'rgba(34, 197, 94, 0.2)';
+                            addUserAlert.style.color = '#86efac';
+                            addUserAlert.style.border = '1px solid rgba(34, 197, 94, 0.4)';
+                            addUserAlert.innerText = `Account created successfully for ${data.user.full_name}!`;
+                            addUserAlert.style.display = 'block';
+                            addUserForm.reset();
+                            setTimeout(() => {
+                                if (addUserModal) addUserModal.style.display = 'none';
+                                window.location.reload();
+                            }, 1200);
+                        } else {
+                            addUserAlert.style.background = 'rgba(239, 68, 68, 0.2)';
+                            addUserAlert.style.color = '#fca5a5';
+                            addUserAlert.style.border = '1px solid rgba(239, 68, 68, 0.4)';
+                            addUserAlert.innerText = data.error || 'Failed to create user account.';
+                            addUserAlert.style.display = 'block';
+                        }
+                    } catch (err) {
+                        addUserAlert.style.background = 'rgba(239, 68, 68, 0.2)';
+                        addUserAlert.style.color = '#fca5a5';
+                        addUserAlert.style.border = '1px solid rgba(239, 68, 68, 0.4)';
+                        addUserAlert.innerText = 'Network error while creating account.';
+                        addUserAlert.style.display = 'block';
+                    }
+                });
+            }
+        })();
+    </script>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
+

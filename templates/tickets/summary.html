@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block title %}Summary - Team Vatana Jira{% endblock %}
+
+{% block content %}
+<!-- SPACE BANNER & TITLE -->
+<div class="space-banner">
+    <div class="space-meta">Spaces</div>
+    <div class="space-title-row">
+        <div class="space-avatar-icon">TV</div>
+        <h1 class="space-name">Team Vatana</h1>
+        <span style="font-size:12px; color:var(--jira-text-muted); display:inline-flex; align-items:center;" title="Team Space"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+    </div>
+
+    <!-- TABS BAR - ONLY SUMMARY, LIST, BOARD -->
+    <div class="tab-bar">
+        <a href="{% url 'summary' %}" class="tab-item {% if active_view == 'summary' %}active{% endif %}">
+            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+            Summary
+        </a>
+        <a href="{% url 'list' %}" class="tab-item {% if active_view == 'list' %}active{% endif %}">
+            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
+            List
+        </a>
+        <a href="{% url 'board' %}" class="tab-item {% if active_view == 'board' %}active{% endif %}">
+            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2m0 10V7m6 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/></svg>
+            Board
+        </a>
+    </div>
+</div>
+
+<div style="padding: 24px; overflow-y: auto; flex: 1; display:flex; flex-direction:column; gap:20px;">
+    <!-- METRIC CARDS -->
+    <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:16px;">
+        <div style="background:var(--jira-card-bg); border:1px solid var(--jira-border); border-radius:6px; padding:20px;">
+            <div style="font-size:12px; font-weight:700; color:var(--jira-text-muted); text-transform:uppercase;">Total Tickets</div>
+            <div style="font-size:32px; font-weight:800; color:var(--jira-blue); margin-top:8px;">{{ total_tickets }}</div>
+        </div>
+        <div style="background:var(--jira-card-bg); border:1px solid var(--jira-border); border-radius:6px; padding:20px;">
+            <div style="font-size:12px; font-weight:700; color:var(--jira-text-muted); text-transform:uppercase;">Open Tickets</div>
+            <div style="font-size:32px; font-weight:800; color:#d97706; margin-top:8px;">{{ open_tickets }}</div>
+        </div>
+        <div style="background:var(--jira-card-bg); border:1px solid var(--jira-border); border-radius:6px; padding:20px;">
+            <div style="font-size:12px; font-weight:700; color:var(--jira-text-muted); text-transform:uppercase;">Resolved / Done</div>
+            <div style="font-size:32px; font-weight:800; color:#16a34a; margin-top:8px;">{{ done_tickets }}</div>
+        </div>
+    </div>
+
+    <!-- BREAKDOWN GRID -->
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+        <!-- Status Breakdown -->
+        <div style="background:var(--jira-card-bg); border:1px solid var(--jira-border); border-radius:6px; padding:16px;">
+            <h3 style="font-size:15px; font-weight:700; margin-bottom:12px; color:var(--jira-text-dark);">Tickets by Status</h3>
+            <ul style="list-style:none; display:flex; flex-direction:column; gap:8px;">
+                {% for st in tickets_by_status %}
+                <li style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--jira-border); font-size:13px; color:var(--jira-text-dark);">
+                    <span>{{ st.status_name }}</span>
+                    <span style="font-weight:700;">{{ st.ticket_count }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <!-- Priority Breakdown -->
+        <div style="background:var(--jira-card-bg); border:1px solid var(--jira-border); border-radius:6px; padding:16px;">
+            <h3 style="font-size:15px; font-weight:700; margin-bottom:12px; color:var(--jira-text-dark);">Tickets by Priority</h3>
+            <ul style="list-style:none; display:flex; flex-direction:column; gap:8px;">
+                {% for prio in tickets_by_priority %}
+                <li style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--jira-border); font-size:13px; color:var(--jira-text-dark);">
+                    <span class="ticket-badge prio-{{ prio.priority_name|lower }}">{{ prio.priority_name }}</span>
+                    <span style="font-weight:700;">{{ prio.ticket_count }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    <!-- RECENT ACTIVITY LOG -->
+    <div style="background:var(--jira-card-bg); border:1px solid var(--jira-border); border-radius:6px; padding:16px;">
+        <h3 style="font-size:15px; font-weight:700; margin-bottom:12px; color:var(--jira-text-dark);">Recent Audit Activity Log</h3>
+        <ul style="list-style:none; display:flex; flex-direction:column; gap:8px;">
+            {% for act in recent_activities %}
+            <li style="font-size:13px; color:var(--jira-text-dark); border-bottom:1px solid var(--jira-border); padding:6px 0;">
+                <strong>{{ act.user.username }}</strong> performed <strong>{{ act.action_type }}</strong> on 
+                <span style="color:var(--jira-blue); font-weight:600;">{{ act.ticket.ticket_code }}</span> 
+                <span style="color:var(--jira-text-muted); font-size:11px; float:right;">{{ act.created_at|date:"d M Y, H:i" }}</span>
+            </li>
+            {% empty %}
+            <li style="font-size:13px; color:var(--jira-text-muted);">No activity recorded yet.</li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endblock %}

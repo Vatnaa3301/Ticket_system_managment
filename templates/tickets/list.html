@@ -1,0 +1,422 @@
+{% extends "base.html" %}
+
+{% block title %}List View - Team Vatana Jira{% endblock %}
+
+{% block content %}
+<style>
+/* Guaranteed Popup & Overlay Styles for List View Dropdowns */
+.status-dropdown-container, .prio-dropdown-container {
+    position: relative !important;
+    display: inline-block;
+}
+
+.status-select-trigger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    padding: 4px 10px;
+    height: 28px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    user-select: none;
+    background: var(--jira-card-bg);
+    color: var(--jira-text-dark);
+    border: 1px solid var(--jira-border);
+    transition: all 0.15s ease;
+}
+
+.status-select-trigger:hover {
+    border-color: var(--jira-blue);
+    box-shadow: 0 0 0 2px rgba(87, 157, 255, 0.2);
+}
+
+[data-theme="dark"] .status-select-trigger {
+    background: #242428;
+    color: #cecfd2;
+    border-color: #333338;
+}
+
+/* Status variants matching Jira pills */
+.status-select-trigger.st-to-do, .status-select-trigger.st-open {
+    background: rgba(9, 30, 66, 0.08);
+    color: var(--jira-text-dark);
+}
+[data-theme="dark"] .status-select-trigger.st-to-do, [data-theme="dark"] .status-select-trigger.st-open {
+    background: #2a2a2e;
+    color: #cecfd2;
+}
+
+.status-select-trigger.st-in-progress {
+    background: #0052cc;
+    color: #ffffff;
+    border-color: #0052cc;
+}
+[data-theme="dark"] .status-select-trigger.st-in-progress {
+    background: #1c2b42;
+    color: #579dff;
+    border-color: #2c4366;
+}
+
+.status-select-trigger.st-in-review, .status-select-trigger.st-review {
+    background: #0052cc;
+    color: #ffffff;
+    border-color: #0052cc;
+}
+[data-theme="dark"] .status-select-trigger.st-in-review, [data-theme="dark"] .status-select-trigger.st-review {
+    background: #1c2b42;
+    color: #579dff;
+    border-color: #2c4366;
+}
+
+.status-select-trigger.st-done, .status-select-trigger.st-closed, .status-select-trigger.st-resolved {
+    background: #1f845a;
+    color: #ffffff;
+    border-color: #1f845a;
+}
+[data-theme="dark"] .status-select-trigger.st-done, [data-theme="dark"] .status-select-trigger.st-closed {
+    background: #143d2b;
+    color: #4ade80;
+    border-color: #1b5c40;
+}
+
+/* Priority trigger box */
+.prio-select-trigger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 4px 10px;
+    min-width: 130px;
+    height: 28px;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--jira-text-dark);
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.15s ease;
+}
+
+.prio-select-trigger:hover {
+    background: var(--jira-card-bg);
+    border-color: var(--jira-border);
+}
+
+[data-theme="dark"] .prio-select-trigger {
+    color: #cecfd2;
+}
+
+[data-theme="dark"] .prio-select-trigger:hover {
+    background: #242428;
+    border-color: #333338;
+}
+
+/* Floating Popover Menus - STRICT DISPLAY NONE BY DEFAULT */
+.status-dropdown-menu, .prio-dropdown-menu {
+    position: absolute !important;
+    top: calc(100% + 4px) !important;
+    left: 0 !important;
+    min-width: 150px;
+    background: #ffffff !important;
+    border: 1px solid #dfe1e6 !important;
+    border-radius: 8px !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3) !important;
+    padding: 4px 0 !important;
+    z-index: 999999 !important;
+    display: none;
+    flex-direction: column;
+}
+
+[data-theme="dark"] .status-dropdown-menu, [data-theme="dark"] .prio-dropdown-menu {
+    background: #222226 !important;
+    border-color: #333338 !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7) !important;
+}
+
+.status-option-item, .prio-option-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 12px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #172b4d;
+    cursor: pointer;
+    border-left: 3px solid transparent;
+    transition: background 0.15s ease;
+}
+
+[data-theme="dark"] .status-option-item, [data-theme="dark"] .prio-option-item {
+    color: #cecfd2;
+}
+
+.status-option-item:hover, .prio-option-item:hover {
+    background: rgba(9, 30, 66, 0.08);
+}
+
+[data-theme="dark"] .status-option-item:hover, [data-theme="dark"] .prio-option-item:hover {
+    background: #2c2c30;
+}
+
+.status-option-item.selected, .prio-option-item.selected {
+    border-left-color: #0052cc;
+    background: rgba(0, 82, 204, 0.08);
+}
+
+[data-theme="dark"] .status-option-item.selected, [data-theme="dark"] .prio-option-item.selected {
+    border-left-color: #579dff;
+    background: rgba(87, 157, 255, 0.12);
+}
+</style>
+
+<!-- SPACE BANNER & TITLE -->
+<div class="space-banner">
+    <div class="space-meta">Spaces</div>
+    <div class="space-title-row">
+        <div class="space-avatar-icon">TV</div>
+        <h1 class="space-name">Team Vatana</h1>
+        <span style="font-size:12px; color:var(--jira-text-muted); display:inline-flex; align-items:center;" title="Team Space"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+    </div>
+
+    <!-- TABS BAR - ONLY SUMMARY, LIST, BOARD -->
+    <div class="tab-bar">
+        <a href="{% url 'summary' %}" class="tab-item {% if active_view == 'summary' %}active{% endif %}">
+            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+            Summary
+        </a>
+        <a href="{% url 'list' %}" class="tab-item {% if active_view == 'list' %}active{% endif %}">
+            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
+            List
+        </a>
+        <a href="{% url 'board' %}" class="tab-item {% if active_view == 'board' %}active{% endif %}">
+            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2m0 10V7m6 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/></svg>
+            Board
+        </a>
+    </div>
+</div>
+
+<div style="padding: 20px 24px; flex: 1;">
+    <table style="width:100%; border-collapse:collapse; font-size:13px; text-align:left;">
+        <thead>
+            <tr style="border-bottom:2px solid var(--jira-border); color:var(--jira-text-muted); font-size:11px; text-transform:uppercase;">
+                <th style="padding:10px;">Key</th>
+                <th style="padding:10px;">Subject</th>
+                <th style="padding:10px;">Status</th>
+                <th style="padding:10px;">Priority</th>
+                <th style="padding:10px;">Category</th>
+                <th style="padding:10px;">Assignee</th>
+                <th style="padding:10px;">Created</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for t in tickets %}
+            <tr class="ticket-row" style="border-bottom:1px solid var(--jira-border); cursor:pointer;" onclick="openTicketDetailModal({{ t.ticket_id }})">
+                <td style="padding:12px 10px; font-weight:700; color:var(--jira-blue);">{{ t.ticket_code }}</td>
+                <td style="padding:12px 10px; font-weight:500;">{{ t.subject }}</td>
+                <td style="padding:12px 10px; position:relative; overflow:visible;" onclick="event.stopPropagation();">
+                    <div class="status-dropdown-container" data-ticket-id="{{ t.ticket_id }}">
+                        <div class="status-select-trigger st-{{ t.status.status_name|slugify|default:'to-do' }}" onclick="toggleStatusDropdown(event, this)">
+                            <span class="status-select-text">{{ t.status.status_name|default:"To Do" }}</span>
+                            <svg class="status-chevron-down" width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                        </div>
+                        <div class="status-dropdown-menu" style="display: none;">
+                            {% for st in statuses %}
+                            <div class="status-option-item {% if t.status and t.status.status_id == st.status_id %}selected{% endif %}"
+                                 onclick="selectStatusOption(event, {{ t.ticket_id }}, {{ st.status_id }}, '{{ st.status_name }}')">
+                                <span>{{ st.status_name }}</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </td>
+                <td style="padding:12px 10px; position:relative; overflow:visible;" onclick="event.stopPropagation();">
+                    <div class="prio-dropdown-container" data-ticket-id="{{ t.ticket_id }}">
+                        <div class="prio-select-trigger" onclick="togglePriorityDropdown(event, this)">
+                            <div class="prio-select-value">
+                                {% if t.priority.priority_name == 'Highest' %}
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ff5630" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 11 12 6 7 11"></polyline><polyline points="17 17 12 12 7 17"></polyline></svg>
+                                    <span>Highest</span>
+                                {% elif t.priority.priority_name == 'High' %}
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ff5630" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
+                                    <span>High</span>
+                                {% elif t.priority.priority_name == 'Medium' %}
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ff9900" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="9" x2="19" y2="9"></line><line x1="5" y1="15" x2="19" y2="15"></line></svg>
+                                    <span>Medium</span>
+                                {% elif t.priority.priority_name == 'Low' %}
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0065ff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                    <span>Low</span>
+                                {% elif t.priority.priority_name == 'Lowest' %}
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0065ff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 7 12 12 17 7"></polyline><polyline points="7 13 12 18 17 13"></polyline></svg>
+                                    <span>Lowest</span>
+                                {% else %}
+                                    <span style="color:var(--jira-text-muted);">Select Priority</span>
+                                {% endif %}
+                            </div>
+                            <svg class="prio-chevron-down" width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                        </div>
+                        <div class="prio-dropdown-menu" style="display: none;">
+                            {% for prio in priorities %}
+                            <div class="prio-option-item {% if t.priority and t.priority.priority_id == prio.priority_id %}selected{% endif %}"
+                                 onclick="selectPriorityOption(event, {{ t.ticket_id }}, {{ prio.priority_id }}, '{{ prio.priority_name }}')">
+                                {% if prio.priority_name == 'Highest' %}
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ff5630" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 11 12 6 7 11"></polyline><polyline points="17 17 12 12 7 17"></polyline></svg>
+                                {% elif prio.priority_name == 'High' %}
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ff5630" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
+                                {% elif prio.priority_name == 'Medium' %}
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ff9900" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="9" x2="19" y2="9"></line><line x1="5" y1="15" x2="19" y2="15"></line></svg>
+                                {% elif prio.priority_name == 'Low' %}
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0065ff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                {% elif prio.priority_name == 'Lowest' %}
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0065ff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 7 12 12 17 7"></polyline><polyline points="7 13 12 18 17 13"></polyline></svg>
+                                {% endif %}
+                                <span>{{ prio.priority_name }}</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </td>
+                <td style="padding:12px 10px; color:var(--jira-text-muted);">{{ t.category.category_name|default:"-" }}</td>
+                <td style="padding:12px 10px;">{{ t.assigned_to.username|default:"Unassigned" }}</td>
+                <td style="padding:12px 10px; color:var(--jira-text-muted); font-size:12px;">{{ t.created_at|date:"d M Y, H:i" }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7" style="padding:20px; text-align:center; color:var(--jira-text-muted);">No tickets found.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<script>
+function closeAllDropdowns() {
+    document.querySelectorAll('.prio-dropdown-menu, .status-dropdown-menu').forEach(menu => {
+        menu.style.display = 'none';
+    });
+    document.querySelectorAll('.prio-dropdown-container, .status-dropdown-container').forEach(container => {
+        container.classList.remove('open');
+    });
+}
+
+function togglePriorityDropdown(e, triggerEl) {
+    e.stopPropagation();
+    const container = triggerEl.closest('.prio-dropdown-container');
+    const menu = container.querySelector('.prio-dropdown-menu');
+    const isCurrentlyOpen = (menu.style.display === 'flex' || menu.style.display === 'block');
+
+    closeAllDropdowns();
+
+    if (!isCurrentlyOpen) {
+        container.classList.add('open');
+        menu.style.display = 'flex';
+    }
+}
+
+function toggleStatusDropdown(e, triggerEl) {
+    e.stopPropagation();
+    const container = triggerEl.closest('.status-dropdown-container');
+    const menu = container.querySelector('.status-dropdown-menu');
+    const isCurrentlyOpen = (menu.style.display === 'flex' || menu.style.display === 'block');
+
+    closeAllDropdowns();
+
+    if (!isCurrentlyOpen) {
+        container.classList.add('open');
+        menu.style.display = 'flex';
+    }
+}
+
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('.prio-dropdown-container') && !e.target.closest('.status-dropdown-container')) {
+        closeAllDropdowns();
+    }
+});
+
+const PRIO_ICONS = {
+    'Highest': `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ff5630" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 11 12 6 7 11"></polyline><polyline points="17 17 12 12 7 17"></polyline></svg><span>Highest</span>`,
+    'High': `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ff5630" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg><span>High</span>`,
+    'Medium': `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ff9900" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="9" x2="19" y2="9"></line><line x1="5" y1="15" x2="19" y2="15"></line></svg><span>Medium</span>`,
+    'Low': `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0065ff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg><span>Low</span>`,
+    'Lowest': `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0065ff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 7 12 12 17 7"></polyline><polyline points="7 13 12 18 17 13"></polyline></svg><span>Lowest</span>`
+};
+
+async function selectPriorityOption(e, ticketId, priorityId, priorityName) {
+    e.stopPropagation();
+    const container = document.querySelector(`.prio-dropdown-container[data-ticket-id="${ticketId}"]`);
+    if (!container) return;
+
+    closeAllDropdowns();
+
+    const valEl = container.querySelector('.prio-select-value');
+    if (valEl && PRIO_ICONS[priorityName]) {
+        valEl.innerHTML = PRIO_ICONS[priorityName];
+    }
+
+    container.querySelectorAll('.prio-option-item').forEach(item => {
+        item.classList.remove('selected');
+    });
+    e.currentTarget.classList.add('selected');
+
+    try {
+        const res = await fetch(`/api/tickets/${ticketId}/update-priority/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ priority_id: priorityId })
+        });
+        const data = await res.json();
+        if (!data.success) {
+            alert('Failed to update priority: ' + data.error);
+        }
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+function getStatusSlug(statusName) {
+    return statusName.toLowerCase().replace(/\s+/g, '-');
+}
+
+async function selectStatusOption(e, ticketId, statusId, statusName) {
+    e.stopPropagation();
+    const container = document.querySelector(`.status-dropdown-container[data-ticket-id="${ticketId}"]`);
+    if (!container) return;
+
+    closeAllDropdowns();
+
+    const triggerEl = container.querySelector('.status-select-trigger');
+    const textEl = container.querySelector('.status-select-text');
+    
+    if (textEl) {
+        textEl.textContent = statusName;
+    }
+    
+    if (triggerEl) {
+        triggerEl.className = 'status-select-trigger st-' + getStatusSlug(statusName);
+    }
+
+    container.querySelectorAll('.status-option-item').forEach(item => {
+        item.classList.remove('selected');
+    });
+    e.currentTarget.classList.add('selected');
+
+    try {
+        const res = await fetch(`/api/tickets/${ticketId}/update-status/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status_id: statusId })
+        });
+        const data = await res.json();
+        if (!data.success) {
+            alert('Failed to update status: ' + data.error);
+        }
+    } catch (err) {
+        console.error(err);
+    }
+}
+</script>
+{% endblock %}

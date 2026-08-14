@@ -1,0 +1,430 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign In - Team Vatana Jira</title>
+    <link rel="stylesheet" href="{% static 'css/jira-theme.css' %}">
+    <style>
+        :root {
+            --auth-bg: #141416;
+            --auth-card-bg: #1e1e22;
+            --auth-card-border: #2e2e34;
+            --auth-input-bg: #28282c;
+            --auth-input-border: #38383e;
+            --auth-text-main: #f4f5f7;
+            --auth-text-muted: #8c9bab;
+        }
+
+        [data-theme="light"] {
+            --auth-bg: #f4f5f7;
+            --auth-card-bg: #ffffff;
+            --auth-card-border: #dfe1e6;
+            --auth-input-bg: #f4f5f7;
+            --auth-input-border: #dfe1e6;
+            --auth-text-main: #172b4d;
+            --auth-text-muted: #626f86;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--auth-bg);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            color: var(--auth-text-main);
+        }
+
+        .auth-container {
+            width: 100%;
+            max-width: 420px;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .auth-card {
+            background: var(--auth-card-bg);
+            border: 1px solid var(--auth-card-border);
+            border-radius: 8px;
+            padding: 32px 28px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.35);
+        }
+
+        .auth-header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .auth-brand {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+            margin-bottom: 8px;
+        }
+
+        .auth-brand-icon {
+            width: 34px;
+            height: 34px;
+            background: #0052cc;
+            color: #ffffff;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 20px;
+        }
+
+        .auth-brand-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--auth-text-main);
+            letter-spacing: -0.3px;
+        }
+
+        .auth-subtitle {
+            font-size: 13px;
+            color: var(--auth-text-muted);
+            margin: 0;
+        }
+
+        /* Tabs */
+        .auth-tabs {
+            display: flex;
+            background: #18181b;
+            border-radius: 6px;
+            padding: 3px;
+            margin-bottom: 24px;
+            border: 1px solid var(--auth-card-border);
+        }
+
+        [data-theme="light"] .auth-tabs {
+            background: #ebecf0;
+        }
+
+        .auth-tab-btn {
+            flex: 1;
+            padding: 8px 14px;
+            font-size: 13px;
+            font-weight: 600;
+            border: none;
+            background: transparent;
+            color: var(--auth-text-muted);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.15s ease, color 0.15s ease;
+        }
+
+        .auth-tab-btn.active {
+            background: #0052cc;
+            color: #ffffff;
+        }
+
+        /* Form groups */
+        .form-group {
+            margin-bottom: 16px;
+            text-align: left;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--auth-text-main);
+            margin-bottom: 6px;
+        }
+
+        .input-wrapper input {
+            width: 100%;
+            padding: 10px 12px;
+            box-sizing: border-box;
+            background: var(--auth-input-bg);
+            border: 1px solid var(--auth-input-border);
+            border-radius: 4px;
+            color: var(--auth-text-main);
+            font-size: 13px;
+            outline: none;
+            transition: border-color 0.15s ease;
+        }
+
+        .input-wrapper input:focus {
+            border-color: #579dff;
+        }
+
+        .btn-submit {
+            width: 100%;
+            padding: 10px;
+            background: #0052cc;
+            color: #ffffff;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: background 0.15s ease;
+        }
+
+        .btn-submit:hover {
+            background: #0065ff;
+        }
+
+        /* Alert banner */
+        .alert-banner {
+            padding: 10px 14px;
+            border-radius: 4px;
+            font-size: 13px;
+            margin-bottom: 18px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .alert-error {
+            background: rgba(255, 86, 48, 0.15);
+            border: 1px solid #ff5630;
+            color: #ff5630;
+        }
+
+        .alert-success {
+            background: rgba(54, 179, 126, 0.15);
+            border: 1px solid #36b37e;
+            color: #36b37e;
+        }
+
+        .auth-info-note {
+            background: rgba(87, 157, 255, 0.1);
+            border-left: 3px solid #579dff;
+            padding: 8px 12px;
+            font-size: 12px;
+            color: var(--auth-text-muted);
+            border-radius: 3px;
+            margin-top: 14px;
+            line-height: 1.4;
+        }
+
+        .auth-footer {
+            margin-top: 24px;
+            text-align: center;
+            font-size: 12px;
+            color: var(--auth-text-muted);
+        }
+
+        .theme-toggle-fixed {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--auth-card-bg);
+            border: 1px solid var(--auth-card-border);
+            padding: 6px 12px;
+            border-radius: 4px;
+            color: var(--auth-text-main);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+
+    <button type="button" id="themeToggleBtn" class="theme-toggle-fixed" title="Toggle Theme">
+        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+        <span id="themeToggleText">Light</span>
+    </button>
+
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <a href="#" class="auth-brand">
+                    <div class="auth-brand-icon">J</div>
+                    <span class="auth-brand-title">Jira</span>
+                </a>
+                <p class="auth-subtitle">Team Vatana Ticket System</p>
+            </div>
+
+            <!-- VERIFICATION SENT CARD -->
+            {% if active_tab == 'verification_sent' %}
+            <div style="text-align:center; padding:10px 0;">
+                <div style="width:54px; height:54px; border-radius:50%; background:rgba(87,157,255,0.15); color:#579dff; display:inline-flex; align-items:center; justify-content:center; margin-bottom:14px;">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                </div>
+                <h3 style="font-size:18px; font-weight:700; margin:0 0 8px 0; color:var(--auth-text-main);">Verify Your Email Address</h3>
+                <p style="font-size:13px; color:var(--auth-text-muted); line-height:1.5; margin-bottom:18px;">
+                    We've sent a verification link to <strong>{{ verification_email }}</strong>.<br>Please check your email inbox to activate your account.
+                </p>
+
+                <form action="{% url 'resend_verification' %}" method="POST">
+                    {% csrf_token %}
+                    <input type="hidden" name="email" value="{{ verification_email }}">
+                    <button type="submit" class="btn-submit" style="background:transparent; border:1px solid #0052cc; color:#579dff;">
+                        ✉️ Resend Verification Email
+                    </button>
+                </form>
+
+                {% if verification_url %}
+                <div style="margin-top:16px; padding:10px 12px; background:rgba(0,82,204,0.12); border:1px solid rgba(87,157,255,0.3); border-radius:6px; font-size:12px; text-align:left;">
+                    <strong style="color:#579dff;">Dev Verification Link:</strong>
+                    <div style="margin-top:4px; word-break:break-all;">
+                        <a href="{{ verification_url }}" style="color:#cecfd2; font-weight:600;" target="_blank">{{ verification_url }}</a>
+                    </div>
+                </div>
+                {% endif %}
+
+                <div style="margin-top:18px; font-size:12px;">
+                    <a href="{% url 'login' %}" style="color:var(--auth-text-muted); text-decoration:none;">← Back to Login</a>
+                </div>
+            </div>
+            {% else %}
+            <!-- Tab selector -->
+            <div class="auth-tabs">
+                <button type="button" class="auth-tab-btn {% if active_tab != 'signup' %}active{% endif %}" id="tabLoginBtn" onclick="switchTab('login')">Log In</button>
+                <button type="button" class="auth-tab-btn {% if active_tab == 'signup' %}active{% endif %}" id="tabSignupBtn" onclick="switchTab('signup')">Create Account</button>
+            </div>
+
+            <!-- Alert Display -->
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert-banner {% if message.tags == 'error' %}alert-error{% else %}alert-success{% endif %}">
+                        <span>{{ message }}</span>
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            {% if unverified_email %}
+                <div class="alert-banner alert-error" style="flex-direction:column; align-items:flex-start; gap:8px;">
+                    <span>{{ error }}</span>
+                    <form action="{% url 'resend_verification' %}" method="POST" style="width:100%;">
+                        {% csrf_token %}
+                        <input type="hidden" name="email" value="{{ unverified_email }}">
+                        <button type="submit" style="background:none; border:none; color:#579dff; font-weight:700; font-size:12px; cursor:pointer; text-decoration:underline; padding:0;">
+                            ✉️ Resend verification email to {{ unverified_email }}
+                        </button>
+                    </form>
+                </div>
+            {% elif error %}
+                <div class="alert-banner alert-error">
+                    <span>{{ error }}</span>
+                </div>
+            {% endif %}
+
+            <!-- LOGIN FORM -->
+            <form id="loginForm" action="{% url 'login' %}" method="POST" style="{% if active_tab == 'signup' %}display: none;{% endif %}">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ next_url }}">
+                
+                <div class="form-group">
+                    <label for="loginIdentifier">Email or Username</label>
+                    <div class="input-wrapper">
+                        <input type="text" id="loginIdentifier" name="username_or_email" placeholder="Email address or username" required autofocus value="{{ username_or_email|default:'' }}">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="loginPassword">Password</label>
+                    <div class="input-wrapper">
+                        <input type="password" id="loginPassword" name="password" placeholder="Enter password" required>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-submit">Log In to Jira</button>
+            </form>
+
+            <!-- CREATE ACCOUNT FORM -->
+            <form id="signupForm" action="{% url 'signup' %}" method="POST" style="{% if active_tab != 'signup' %}display: none;{% endif %}">
+                {% csrf_token %}
+
+                <div class="form-group">
+                    <label for="signupFullName">Full Name</label>
+                    <div class="input-wrapper">
+                        <input type="text" id="signupFullName" name="full_name" placeholder="John Doe" required value="{{ full_name|default:'' }}">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="signupUsername">Username</label>
+                    <div class="input-wrapper">
+                        <input type="text" id="signupUsername" name="username" placeholder="johndoe" required value="{{ signup_username|default:'' }}">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="signupEmail">Email Address <span style="color:#ff5630;">*</span></label>
+                    <div class="input-wrapper">
+                        <input type="email" id="signupEmail" name="email" placeholder="john@example.com" required value="{{ signup_email|default:'' }}">
+                    </div>
+                    <span style="font-size:11px; color:var(--auth-text-muted); display:block; margin-top:4px;">Email is required for ticket assignment notifications.</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="signupPassword">Password</label>
+                    <div class="input-wrapper">
+                        <input type="password" id="signupPassword" name="password" placeholder="Min. 6 characters" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="signupConfirmPassword">Confirm Password</label>
+                    <div class="input-wrapper">
+                        <input type="password" id="signupConfirmPassword" name="confirm_password" placeholder="Re-enter password" required>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-submit">Create Account & Sign In</button>
+
+                <div class="auth-info-note">
+                    ℹ️ <strong>Default Role:</strong> New accounts are assigned the <strong>Guest</strong> role by default until an Administrator updates your role permissions.
+                </div>
+            </form>
+            {% endif %}
+
+            <div class="auth-footer">
+                <p>&copy; 2026 Team Vatana Jira System. All rights reserved.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function switchTab(tab) {
+            const loginForm = document.getElementById('loginForm');
+            const signupForm = document.getElementById('signupForm');
+            const tabLoginBtn = document.getElementById('tabLoginBtn');
+            const tabSignupBtn = document.getElementById('tabSignupBtn');
+
+            if (tab === 'signup') {
+                loginForm.style.display = 'none';
+                signupForm.style.display = 'block';
+                tabLoginBtn.classList.remove('active');
+                tabSignupBtn.classList.add('active');
+            } else {
+                signupForm.style.display = 'none';
+                loginForm.style.display = 'block';
+                tabSignupBtn.classList.remove('active');
+                tabLoginBtn.classList.add('active');
+            }
+        }
+
+        // Theme Toggle Logic
+        const themeBtn = document.getElementById('themeToggleBtn');
+        const themeText = document.getElementById('themeToggleText');
+        const savedTheme = localStorage.getItem('jira_theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        themeText.innerText = savedTheme === 'dark' ? 'Light Mode' : 'Dark Mode';
+
+        themeBtn.addEventListener('click', () => {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('jira_theme', newTheme);
+            themeText.innerText = newTheme === 'dark' ? 'Light Mode' : 'Dark Mode';
+        });
+    </script>
+</body>
+</html>

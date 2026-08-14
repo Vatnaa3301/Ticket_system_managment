@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+
+{% block title %}For you - Team Vatana Jira{% endblock %}
+
+{% block content %}
+<div class="for-you-page-container">
+    <!-- RECOMMENDED SPACES SECTION -->
+    <div class="for-you-section-header">
+        <span class="for-you-section-title">Recommended spaces</span>
+        <a href="{% url 'board' %}" class="for-you-link-muted">View all spaces</a>
+    </div>
+
+    <div class="recommended-spaces-grid">
+        <a href="{% url 'board' %}" class="recommended-space-card">
+            <div class="space-card-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+            </div>
+            <div class="space-card-info">
+                <div class="space-card-title">Team Vatana</div>
+                <div class="space-card-subtitle">Software space</div>
+            </div>
+        </a>
+    </div>
+
+    <!-- MAIN FOR YOU SECTION -->
+    <div class="for-you-main-header">
+        <h1 class="for-you-heading">For you</h1>
+
+        <!-- SUB-TAB PILL BAR (ONLY ASSIGNED, WORKED ON, VIEWED) -->
+        <div class="for-you-tab-bar">
+            <a href="?tab=assigned" class="for-you-pill {% if active_tab == 'assigned' %}active{% endif %}">
+                Assigned to me
+                {% if assigned_count > 0 %}
+                <span class="pill-count-badge">{{ assigned_count }}</span>
+                {% endif %}
+            </a>
+            <a href="?tab=worked_on" class="for-you-pill {% if active_tab == 'worked_on' %}active{% endif %}">
+                Worked on
+            </a>
+            <a href="?tab=viewed" class="for-you-pill {% if active_tab == 'viewed' %}active{% endif %}">
+                Viewed
+            </a>
+        </div>
+    </div>
+
+    <!-- TICKET LISTING CONTENT GROUPED BY SECTION -->
+    <div class="for-you-content-body">
+        {% if grouped_sections %}
+            {% for group in grouped_sections %}
+            <div class="for-you-status-group">
+                <div class="for-you-status-header">{{ group.group_title }}</div>
+                <div class="for-you-tickets-list">
+                    {% if group.is_status_group %}
+                        <!-- Assigned to me items -->
+                        {% for t in group.tickets %}
+                        <div class="for-you-ticket-row" onclick="openTicketDetailModal({{ t.ticket_id }})">
+                            <div class="for-you-row-left">
+                                <div class="key-icon-box key-icon-green" style="width:24px; height:24px; font-size:11px; flex-shrink:0;">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+                                </div>
+                                <div class="for-you-ticket-details">
+                                    <div class="for-you-ticket-title">{{ t.subject }}</div>
+                                    <div class="for-you-ticket-meta">
+                                        Feature · {{ t.ticket_code }} · Team Vatana
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="for-you-row-right">
+                                <span class="jira-status-pill st-{{ t.status.status_name|slugify|default:'to-do' }}">
+                                    {{ t.status.status_name }}
+                                </span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <!-- Worked on and Viewed items matching Jira screenshot -->
+                        {% for item in group.items %}
+                            {% if item.is_space_or_board %}
+                                <a href="{{ item.url }}" class="for-you-ticket-row" style="text-decoration:none;">
+                                    <div class="for-you-row-left">
+                                        {% if item.icon_type == 'space' %}
+                                        <div class="space-card-icon" style="width:24px; height:24px; border-radius:4px; flex-shrink:0;">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                                        </div>
+                                        {% else %}
+                                        <div class="key-icon-box key-icon-blue" style="width:24px; height:24px; font-size:11px; flex-shrink:0;">
+                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18"/></svg>
+                                        </div>
+                                        {% endif %}
+                                        <div class="for-you-ticket-details">
+                                            <div class="for-you-ticket-title">{{ item.title }}</div>
+                                            <div class="for-you-ticket-meta">{{ item.subtitle }}</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="for-you-row-right">
+                                        <span class="for-you-time-str">{{ item.time_str }}</span>
+                                    </div>
+                                </a>
+                            {% else %}
+                                <div class="for-you-ticket-row" onclick="openTicketDetailModal({{ item.ticket_id }})">
+                                    <div class="for-you-row-left">
+                                        {% if item.issue_type == 'Subtask' %}
+                                        <div class="key-icon-box key-icon-blue" style="width:24px; height:24px; font-size:11px; flex-shrink:0;">
+                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                                        </div>
+                                        {% elif item.issue_type == 'Task' %}
+                                        <div class="key-icon-box key-icon-blue" style="width:24px; height:24px; font-size:11px; flex-shrink:0;">
+                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                        </div>
+                                        {% else %}
+                                        <div class="key-icon-box key-icon-green" style="width:24px; height:24px; font-size:11px; flex-shrink:0;">
+                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+                                        </div>
+                                        {% endif %}
+                                        <div class="for-you-ticket-details">
+                                            <div class="for-you-ticket-title">{{ item.title }}</div>
+                                            <div class="for-you-ticket-meta">{{ item.subtitle }}</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="for-you-row-right" style="display:flex; align-items:center; gap:12px;">
+                                        {% if active_tab == 'worked_on' %}
+                                        <div class="user-avatar" style="width:22px; height:22px; font-size:9.5px; background:{{ user.profile.avatar_color|default:'#0052cc' }}; color:#ffffff; font-weight:700; flex-shrink:0; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; overflow:hidden;">
+                                            {% if user.profile.profile_image %}
+                                            <img src="{{ user.profile.profile_image }}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">
+                                            {% else %}
+                                            {{ item.user_initials }}
+                                            {% endif %}
+                                        </div>
+                                        {% endif %}
+                                        <span class="for-you-time-str">{{ item.time_str }}</span>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="for-you-empty-state">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--jira-text-muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                <div style="font-size:15px; font-weight:600; margin-top:12px; color:var(--jira-text-dark);">No items found</div>
+                <div style="font-size:13px; color:var(--jira-text-muted); margin-top:4px;">Items matching this tab will appear here.</div>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- BOTTOM FEEDBACK LINK -->
+    <div class="for-you-footer">
+        <a href="#" class="for-you-feedback-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <span>Give us feedback</span>
+        </a>
+    </div>
+</div>
+{% endblock %}
