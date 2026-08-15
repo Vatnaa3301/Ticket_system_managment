@@ -249,9 +249,27 @@ function renderBoardData(data) {
         }
     });
 
-    if (window.initDragAndDrop) {
-        window.initDragAndDrop();
-    }
+    attachBoardCardEvents();
+}
+
+function attachBoardCardEvents() {
+    const cards = document.querySelectorAll('.ticket-card');
+    cards.forEach(card => {
+        card.setAttribute('draggable', 'true');
+        card.ondragstart = (e) => {
+            e.dataTransfer.setData('text/plain', card.dataset.ticketId);
+            card.classList.add('dragging');
+        };
+        card.ondragend = () => {
+            card.classList.remove('dragging');
+        };
+        card.onclick = (e) => {
+            if (e.target.closest('.no-modal')) return;
+            if (card.dataset.ticketId) {
+                window.openTicketDetailModal(card.dataset.ticketId);
+            }
+        };
+    });
 }
 
 async function fetchBoardData(pushUrl = true) {
@@ -268,7 +286,7 @@ async function fetchBoardData(pushUrl = true) {
     }
 
     const queryString = params.toString();
-    const apiUrl = '/api/board/sync/' + (queryString ? '?' + queryString : '');
+    const apiUrl = '/api/board/data/' + (queryString ? '?' + queryString : '');
     const pageUrl = window.location.pathname + (queryString ? '?' + queryString : '');
 
     if (pushUrl) {
@@ -281,6 +299,8 @@ async function fetchBoardData(pushUrl = true) {
         const data = await res.json();
         if (data.success) {
             renderBoardData(data);
+        } else {
+            console.error('API returned error:', data.error);
         }
     } catch (err) {
         console.error('Board data fetch error:', err);
@@ -290,6 +310,7 @@ async function fetchBoardData(pushUrl = true) {
 window.showBoardSkeleton = showBoardSkeleton;
 window.renderBoardData = renderBoardData;
 window.fetchBoardData = fetchBoardData;
+window.attachBoardCardEvents = attachBoardCardEvents;
 
 // GLOBAL TICKET DETAIL MODAL POPUP FUNCTION
 window.openTicketDetailModal = async function(ticketId, isSilentRefresh = false) {

@@ -684,8 +684,8 @@ def board_view(request):
 
 
 @login_required
-def api_board_sync(request):
-    """API endpoint to fetch live board columns JSON for smooth skeleton transitions."""
+def api_board_data(request):
+    """API endpoint to fetch live board columns JSON for smooth skeleton transitions and live filters."""
     try:
         data = get_board_columns_data(request)
         # Serialize statuses, categories, priorities for client if needed
