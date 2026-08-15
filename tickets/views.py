@@ -168,13 +168,25 @@ from django.contrib.auth.models import User
 from django.contrib import messages
 from django.db.models import Q, Count
 from django.conf import settings
-from django.core.files.storage import FileSystemStorage
+from django.core.files.storage import default_storage, FileSystemStorage
 from django.urls import reverse
 from .models import (
     Ticket, TicketStatus, Priority, TicketCategory, TicketComment,
     TicketLog, TicketAssignment, UserProfile, ServiceRating, SLARule,
     TicketAttachment, Role
 )
+
+def save_file_to_storage(file_obj, subfolder, custom_filename=None):
+    """
+    Saves an uploaded file using Django's default storage 
+    (Cloudflare R2 / S3 if credentials configured, or FileSystemStorage locally).
+    Returns the public URL of the saved file.
+    """
+    filename = custom_filename or file_obj.name
+    save_path = f"{subfolder}/{filename}"
+    saved_name = default_storage.save(save_path, file_obj)
+    return default_storage.url(saved_name)
+
 
 
 def login_view(request):
@@ -1169,10 +1181,8 @@ def api_create_ticket(request):
 
         # Handle uploaded attachments
         if request.FILES:
-            fs = FileSystemStorage(location=os.path.join(settings.MEDIA_ROOT, 'attachments'), base_url='/media/attachments/')
             for file_obj in request.FILES.getlist('attachments'):
-                saved_name = fs.save(file_obj.name, file_obj)
-                file_url = fs.url(saved_name)
+                file_url = save_file_to_storage(file_obj, 'attachments')
                 TicketAttachment.objects.create(
                     ticket=ticket,
                     uploaded_by=user,
@@ -1406,11 +1416,9 @@ def api_upload_attachment(request, ticket_id):
         if not files:
             return JsonResponse({'success': False, 'error': 'No files provided.'}, status=400)
 
-        fs = FileSystemStorage(location=os.path.join(settings.MEDIA_ROOT, 'attachments'), base_url='/media/attachments/')
         created_attachments = []
         for file_obj in files:
-            saved_name = fs.save(file_obj.name, file_obj)
-            file_url = fs.url(saved_name)
+            file_url = save_file_to_storage(file_obj, 'attachments')
             att = TicketAttachment.objects.create(
                 ticket=ticket,
                 uploaded_by=user,
@@ -1441,11 +1449,9 @@ def api_upload_comment_image(request):
         if not files:
             return JsonResponse({'success': False, 'error': 'No image file provided.'}, status=400)
 
-        fs = FileSystemStorage(location=os.path.join(settings.MEDIA_ROOT, 'comment_images'), base_url='/media/comment_images/')
         uploaded_urls = []
         for file_obj in files:
-            saved_name = fs.save(file_obj.name, file_obj)
-            file_url = fs.url(saved_name)
+            file_url = save_file_to_storage(file_obj, 'comment_images')
             uploaded_urls.append(file_url)
 
         return JsonResponse({
@@ -1696,12 +1702,8 @@ def api_update_profile(request):
             profile.profile_image = None
         elif 'profile_image' in request.FILES:
             image_file = request.FILES['profile_image']
-            fs = FileSystemStorage(
-                location=os.path.join(settings.MEDIA_ROOT, 'profile_images'),
-                base_url='/media/profile_images/'
-            )
-            filename = fs.save(f"user_{user.id}_{image_file.name}", image_file)
-            profile.profile_image = fs.url(filename)
+            custom_name = f"user_{user.id}_{image_file.name}"
+            profile.profile_image = save_file_to_storage(image_file, 'profile_images', custom_filename=custom_name)
 
         profile.save()
 
