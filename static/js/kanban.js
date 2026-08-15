@@ -31,29 +31,13 @@ window.openTicketDetailModal = async function(ticketId) {
             assigneeEl.title = t.assignee_email ? `${t.assignee} (${t.assignee_email})` : (t.assignee || 'Unassigned');
         }
 
-        // Only show "Assign to me" if the ticket is NOT already assigned to the current user
+        // Only show "Assign to me" text for the account that got assigned to the ticket
         if (btnAssignToMe) {
-            const isAssignedToMe = (t.assignee_id && t.current_user_id && String(t.assignee_id) === String(t.current_user_id));
-            if (isAssignedToMe || !t.current_user_id) {
-                btnAssignToMe.style.display = 'none';
-            } else {
+            const isAssignedToMe = Boolean(t.assignee_id && t.current_user_id && String(t.assignee_id) === String(t.current_user_id));
+            if (isAssignedToMe) {
                 btnAssignToMe.style.display = 'inline';
-                btnAssignToMe.onclick = async (e) => {
-                    e.preventDefault();
-                    try {
-                        const res = await fetch(`/api/tickets/${ticketId}/edit/`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ assigned_to_id: t.current_user_id })
-                        });
-                        const editData = await res.json();
-                        if (editData.success) {
-                            window.openTicketDetailModal(ticketId);
-                        }
-                    } catch (err) {
-                        console.error(err);
-                    }
-                };
+            } else {
+                btnAssignToMe.style.display = 'none';
             }
         }
 
