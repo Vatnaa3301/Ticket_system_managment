@@ -2989,62 +2989,53 @@ textarea.form-control,
     to { transform: rotate(-1turn); }
 }
 
-/* ==================== FACEBOOK-STYLE SKELETON LOADER ==================== */
+/* ==================== HIGH-CONTRAST MOVING SKELETON LOADER ==================== */
 .skeleton-shimmer {
+    display: inline-block !important;
     position: relative !important;
     overflow: hidden !important;
-    background-color: #e2e5e9 !important;
     border-radius: 6px !important;
-    display: inline-block !important;
     color: transparent !important;
     user-select: none !important;
     pointer-events: none !important;
     border: none !important;
     vertical-align: middle !important;
     min-height: 12px;
+    
+    /* Direct High-Contrast Moving Wave */
+    background: linear-gradient(
+        90deg,
+        #cfd4dc 0%,
+        #e4e7ec 20%,
+        #ffffff 50%,
+        #e4e7ec 80%,
+        #cfd4dc 100%
+    ) !important;
+    background-size: 250% 100% !important;
+    animation: fbShimmerWave 1.25s infinite linear !important;
 }
 
 [data-theme="dark"] .skeleton-shimmer {
-    background-color: #2a2b30 !important;
-}
-
-.skeleton-shimmer::after {
-    content: "" !important;
-    position: absolute !important;
-    top: 0 !important;
-    left: -150% !important;
-    width: 150% !important;
-    height: 100% !important;
     background: linear-gradient(
         90deg,
-        rgba(255, 255, 255, 0) 0%,
-        rgba(255, 255, 255, 0.5) 40%,
-        rgba(255, 255, 255, 0.85) 50%,
-        rgba(255, 255, 255, 0.5) 60%,
-        rgba(255, 255, 255, 0) 100%
+        #1c1d22 0%,
+        #2a2c33 20%,
+        #4a4d5a 50%,
+        #2a2c33 80%,
+        #1c1d22 100%
     ) !important;
-    animation: fbSkeletonShimmer 1.2s infinite cubic-bezier(0.25, 0.1, 0.25, 1) !important;
-    will-change: transform !important;
+    background-size: 250% 100% !important;
+    animation: fbShimmerWave 1.25s infinite linear !important;
 }
 
-[data-theme="dark"] .skeleton-shimmer::after {
-    background: linear-gradient(
-        90deg,
-        rgba(255, 255, 255, 0) 0%,
-        rgba(255, 255, 255, 0.08) 40%,
-        rgba(255, 255, 255, 0.22) 50%,
-        rgba(255, 255, 255, 0.08) 60%,
-        rgba(255, 255, 255, 0) 100%
-    ) !important;
-}
-
-@keyframes fbSkeletonShimmer {
+@keyframes fbShimmerWave {
     0% {
-        transform: translateX(0%) !important;
+        background-position: 250% 0;
     }
     100% {
-        transform: translateX(200%) !important;
+        background-position: -250% 0;
     }
 }
+
 
 
