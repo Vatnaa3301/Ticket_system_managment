@@ -1,3 +1,100 @@
+// SKELETON LOADER FOR TICKET DETAIL MODAL
+function showTicketDetailSkeleton() {
+    const codeEl = document.getElementById('detailCode');
+    if (codeEl) codeEl.innerHTML = '<span class="skeleton-shimmer" style="width:55px; height:16px; display:inline-block;"></span>';
+
+    const subjectEl = document.getElementById('detailSubject');
+    if (subjectEl) subjectEl.innerHTML = '<div class="skeleton-shimmer" style="width:70%; height:26px; border-radius:4px; margin-top:2px;"></div>';
+
+    const descEl = document.getElementById('detailDescription');
+    if (descEl) {
+        descEl.innerHTML = `
+            <div style="display:flex; flex-direction:column; gap:8px; margin-top:6px;">
+                <div class="skeleton-shimmer" style="width:95%; height:14px;"></div>
+                <div class="skeleton-shimmer" style="width:85%; height:14px;"></div>
+                <div class="skeleton-shimmer" style="width:50%; height:14px;"></div>
+            </div>
+        `;
+    }
+
+    const attCountEl = document.getElementById('detailAttachmentCount');
+    if (attCountEl) attCountEl.innerHTML = '<span class="skeleton-shimmer" style="width:18px; height:14px; border-radius:8px; display:inline-block;"></span>';
+
+    const attListEl = document.getElementById('detailAttachmentsList');
+    if (attListEl) {
+        attListEl.innerHTML = `
+            <div style="display:flex; flex-direction:column; gap:6px;">
+                <div class="skeleton-shimmer" style="width:100%; height:38px; border-radius:4px;"></div>
+                <div class="skeleton-shimmer" style="width:100%; height:38px; border-radius:4px;"></div>
+            </div>
+        `;
+    }
+
+    const commentsEl = document.getElementById('detailComments');
+    if (commentsEl) {
+        commentsEl.innerHTML = `
+            <div style="display:flex; flex-direction:column; gap:16px; margin-top:16px;">
+                <div style="display:flex; gap:10px; align-items:flex-start;">
+                    <div class="skeleton-shimmer" style="width:32px; height:32px; border-radius:50%; flex-shrink:0;"></div>
+                    <div style="flex:1; display:flex; flex-direction:column; gap:6px;">
+                        <div class="skeleton-shimmer" style="width:120px; height:13px;"></div>
+                        <div class="skeleton-shimmer" style="width:85%; height:16px;"></div>
+                    </div>
+                </div>
+                <div style="display:flex; gap:10px; align-items:flex-start;">
+                    <div class="skeleton-shimmer" style="width:32px; height:32px; border-radius:50%; flex-shrink:0;"></div>
+                    <div style="flex:1; display:flex; flex-direction:column; gap:6px;">
+                        <div class="skeleton-shimmer" style="width:95px; height:13px;"></div>
+                        <div class="skeleton-shimmer" style="width:65%; height:16px;"></div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    const statusSelect = document.getElementById('detailStatusSelect');
+    if (statusSelect) {
+        statusSelect.disabled = true;
+        statusSelect.innerHTML = '<option value="">Loading...</option>';
+    }
+
+    const assigneeEl = document.getElementById('detailAssignee');
+    if (assigneeEl) assigneeEl.innerHTML = '<span class="skeleton-shimmer" style="width:75px; height:14px; display:inline-block;"></span>';
+
+    const assigneeAvatarEl = document.getElementById('detailAssigneeAvatar');
+    if (assigneeAvatarEl) {
+        assigneeAvatarEl.innerHTML = '<div class="skeleton-shimmer" style="width:24px; height:24px; border-radius:50%;"></div>';
+        assigneeAvatarEl.style.background = 'transparent';
+    }
+
+    const btnAssignToMe = document.getElementById('btnAssignToMe');
+    if (btnAssignToMe) btnAssignToMe.style.display = 'none';
+
+    const priorityEl = document.getElementById('detailPriority');
+    if (priorityEl) priorityEl.innerHTML = '<span class="skeleton-shimmer" style="width:65px; height:14px; display:inline-block;"></span>';
+
+    const categoryEl = document.getElementById('detailCategory');
+    if (categoryEl) categoryEl.innerHTML = '<span class="skeleton-shimmer" style="width:60px; height:14px; display:inline-block;"></span>';
+
+    const dueDateEl = document.getElementById('detailDueDate');
+    if (dueDateEl) dueDateEl.innerHTML = '<span class="skeleton-shimmer" style="width:85px; height:14px; display:inline-block;"></span>';
+
+    const startDateEl = document.getElementById('detailStartDate');
+    if (startDateEl) startDateEl.innerHTML = '<span class="skeleton-shimmer" style="width:85px; height:14px; display:inline-block;"></span>';
+
+    const creatorEl = document.getElementById('detailCreator');
+    if (creatorEl) creatorEl.innerHTML = '<span class="skeleton-shimmer" style="width:90px; height:14px; display:inline-block;"></span>';
+
+    const creatorAvatarEl = document.getElementById('detailCreatorAvatar');
+    if (creatorAvatarEl) {
+        creatorAvatarEl.innerHTML = '<div class="skeleton-shimmer" style="width:24px; height:24px; border-radius:50%;"></div>';
+        creatorAvatarEl.style.background = 'transparent';
+    }
+
+    const createdEl = document.getElementById('detailCreated');
+    if (createdEl) createdEl.innerHTML = '<span class="skeleton-shimmer" style="width:120px; height:14px; display:inline-block;"></span>';
+}
+
 // GLOBAL TICKET DETAIL MODAL POPUP FUNCTION
 window.openTicketDetailModal = async function(ticketId) {
     const targetModal = document.getElementById('ticketDetailModal');
@@ -5,6 +102,9 @@ window.openTicketDetailModal = async function(ticketId) {
         targetModal.style.display = 'flex';
         targetModal.classList.add('active');
     }
+
+    // Immediately render Skeleton Loader placeholder layout with shimmer animation
+    showTicketDetailSkeleton();
 
     try {
         const res = await fetch(`/api/tickets/${ticketId}/details/`);

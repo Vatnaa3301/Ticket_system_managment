@@ -2988,3 +2988,31 @@ textarea.form-control,
     from { transform: rotate(0); }
     to { transform: rotate(-1turn); }
 }
+
+/* ==================== SKELETON LOADER ==================== */
+.skeleton-shimmer {
+    background: linear-gradient(90deg, var(--jira-column-bg, #f4f5f7) 25%, var(--jira-border, #ebecf0) 50%, var(--jira-column-bg, #f4f5f7) 75%) !important;
+    background-size: 200% 100% !important;
+    animation: skeletonShimmer 1.5s infinite ease-in-out !important;
+    border-radius: 4px !important;
+    display: inline-block !important;
+    color: transparent !important;
+    user-select: none !important;
+    pointer-events: none !important;
+    border: none !important;
+}
+
+[data-theme="dark"] .skeleton-shimmer {
+    background: linear-gradient(90deg, #222226 25%, #2e2e34 50%, #222226 75%) !important;
+    background-size: 200% 100% !important;
+}
+
+@keyframes skeletonShimmer {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+
