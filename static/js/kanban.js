@@ -549,6 +549,18 @@ document.addEventListener('DOMContentLoaded', () => {
     if (createForm) {
         createForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+
+            // Show hamster loading overlay
+            const hamsterOverlay = document.getElementById('hamsterLoadingOverlay');
+            if (hamsterOverlay) {
+                hamsterOverlay.style.display = 'flex';
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        hamsterOverlay.classList.add('active');
+                    });
+                });
+            }
+
             const formData = new FormData();
             formData.append('subject', document.getElementById('createSubject').value);
             formData.append('description', document.getElementById('createDescription').value);
@@ -572,6 +584,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     body: formData
                 });
                 const data = await res.json();
+
+                // Hide hamster loading overlay with smooth fade out
+                if (hamsterOverlay) {
+                    hamsterOverlay.classList.remove('active');
+                    setTimeout(() => { hamsterOverlay.style.display = 'none'; }, 300);
+                }
+
                 if (data.success) {
                     window.selectedCreateFiles = [];
                     if (window.updateCreateAttachmentsPreview) window.updateCreateAttachmentsPreview();
@@ -592,6 +611,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     alert('Error: ' + data.error);
                 }
             } catch (err) {
+                // Hide hamster on error too
+                if (hamsterOverlay) {
+                    hamsterOverlay.classList.remove('active');
+                    setTimeout(() => { hamsterOverlay.style.display = 'none'; }, 300);
+                }
                 console.error(err);
             }
         });
