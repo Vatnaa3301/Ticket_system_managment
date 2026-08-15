@@ -103,61 +103,65 @@ def send_verification_email(request, user):
 
 
 def send_assignment_email(ticket, assigned_user):
-    """Send email notification via Resend when a ticket is assigned to a user."""
-    if not assigned_user or not assigned_user.email:
-        return
+    """Send email notification via Resend when a ticket is assigned to a user (asynchronously in background thread)."""
+    def _run_email_send():
+        try:
+            if not assigned_user or not assigned_user.email:
+                return
 
-    profile = getattr(assigned_user, 'profile', None)
-    if profile and not profile.is_email_verified:
-        print(f"[Notification] Skipping assignment email for {assigned_user.email} (Email not verified yet).")
-        return
+            profile = getattr(assigned_user, 'profile', None)
+            if profile and not profile.is_email_verified:
+                print(f"[Notification] Skipping assignment email for {assigned_user.email} (Email not verified yet).")
+                return
 
-    resend_key = os.environ.get('RESEND_API_KEY', '')
-    if not resend_key:
-        return
+            resend_key = os.environ.get('RESEND_API_KEY', '')
+            if not resend_key:
+                return
 
-    resend.api_key = resend_key
-    sender_email = os.environ.get('RESEND_FROM_EMAIL', 'onboarding@resend.dev')
+            resend.api_key = resend_key
+            sender_email = os.environ.get('RESEND_FROM_EMAIL', 'onboarding@resend.dev')
 
-    subject = f"[Ticket Assigned] {ticket.ticket_code}: {ticket.subject}"
-    assigned_by = ticket.user.username if ticket.user else "System"
+            subject = f"[Ticket Assigned] {ticket.ticket_code}: {ticket.subject}"
+            assigned_by = ticket.user.username if ticket.user else "System"
 
-    start_date_str = safe_format_date(ticket.start_date, '%d %b %Y') or 'N/A'
-    due_date_str = safe_format_date(ticket.due_date, '%d %b %Y') or 'N/A'
-    prio_name = ticket.priority.priority_name if ticket.priority else 'Medium'
-    status_name = ticket.status.status_name if ticket.status else 'Open'
+            start_date_str = safe_format_date(ticket.start_date, '%d %b %Y') or 'N/A'
+            due_date_str = safe_format_date(ticket.due_date, '%d %b %Y') or 'N/A'
+            prio_name = ticket.priority.priority_name if ticket.priority else 'Medium'
+            status_name = ticket.status.status_name if ticket.status else 'Open'
 
-
-    html_content = f"""
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden; background-color: #ffffff;">
-        <div style="background-color: #0052cc; color: #ffffff; padding: 20px 24px;">
-            <h2 style="margin: 0; font-size: 20px; font-weight: 700;">🎫 Ticket Assigned to You</h2>
-        </div>
-        <div style="padding: 24px; color: #172b4d;">
-            <p style="font-size: 15px; margin-top: 0;">Hi <strong>{assigned_user.username}</strong>,</p>
-            <p style="font-size: 14px;">You have been assigned to ticket <strong>{ticket.ticket_code}</strong> by {assigned_by}.</p>
-            
-            <div style="background-color: #f4f5f7; border-left: 4px solid #0052cc; padding: 16px; border-radius: 4px; margin: 20px 0;">
-                <p style="margin: 0 0 8px 0; font-size: 14px;"><strong>Subject:</strong> {ticket.subject}</p>
-                <p style="margin: 0 0 8px 0; font-size: 14px;"><strong>Priority:</strong> {prio_name}</p>
-                <p style="margin: 0 0 8px 0; font-size: 14px;"><strong>Status:</strong> {status_name}</p>
-                <p style="margin: 0; font-size: 14px;"><strong>Start Date:</strong> {start_date_str} | <strong>Due Date:</strong> {due_date_str}</p>
+            html_content = f"""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden; background-color: #ffffff;">
+                <div style="background-color: #0052cc; color: #ffffff; padding: 20px 24px;">
+                    <h2 style="margin: 0; font-size: 20px; font-weight: 700;">🎫 Ticket Assigned to You</h2>
+                </div>
+                <div style="padding: 24px; color: #172b4d;">
+                    <p style="font-size: 15px; margin-top: 0;">Hi <strong>{assigned_user.username}</strong>,</p>
+                    <p style="font-size: 14px;">You have been assigned to ticket <strong>{ticket.ticket_code}</strong> by {assigned_by}.</p>
+                    
+                    <div style="background-color: #f4f5f7; border-left: 4px solid #0052cc; padding: 16px; border-radius: 4px; margin: 20px 0;">
+                        <p style="margin: 0 0 8px 0; font-size: 14px;"><strong>Subject:</strong> {ticket.subject}</p>
+                        <p style="margin: 0 0 8px 0; font-size: 14px;"><strong>Priority:</strong> {prio_name}</p>
+                        <p style="margin: 0 0 8px 0; font-size: 14px;"><strong>Status:</strong> {status_name}</p>
+                        <p style="margin: 0; font-size: 14px;"><strong>Start Date:</strong> {start_date_str} | <strong>Due Date:</strong> {due_date_str}</p>
+                    </div>
+                    
+                    <p style="font-size: 13px; color: #626f86;">Log into Team Vatana Jira system to review and manage this ticket.</p>
+                </div>
             </div>
-            
-            <p style="font-size: 13px; color: #626f86;">Log into Team Vatana Jira system to review and manage this ticket.</p>
-        </div>
-    </div>
-    """
-    try:
-        resend.Emails.send({
-            "from": sender_email,
-            "to": [assigned_user.email],
-            "subject": subject,
-            "html": html_content
-        })
-        print(f"Successfully sent assignment notification email to {assigned_user.email} for ticket {ticket.ticket_code}")
-    except Exception as e:
-        print(f"Resend notification error: {e}")
+            """
+            resend.Emails.send({
+                "from": sender_email,
+                "to": [assigned_user.email],
+                "subject": subject,
+                "html": html_content
+            })
+            print(f"Successfully sent assignment notification email to {assigned_user.email} for ticket {ticket.ticket_code}")
+        except Exception as e:
+            print(f"Resend notification error: {e}")
+
+    import threading
+    threading.Thread(target=_run_email_send, daemon=True).start()
+
 
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt

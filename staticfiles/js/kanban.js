@@ -550,15 +550,18 @@ document.addEventListener('DOMContentLoaded', () => {
         createForm.addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            // Show hamster loading overlay
+            // Instantly show hamster loading overlay
             const hamsterOverlay = document.getElementById('hamsterLoadingOverlay');
             if (hamsterOverlay) {
                 hamsterOverlay.style.display = 'flex';
-                requestAnimationFrame(() => {
-                    requestAnimationFrame(() => {
-                        hamsterOverlay.classList.add('active');
-                    });
-                });
+                hamsterOverlay.classList.add('active');
+            }
+
+            // Close Create modal immediately so overlay is clean and prominent
+            const createModal = document.getElementById('createTicketModal');
+            if (createModal) {
+                createModal.style.display = 'none';
+                createModal.classList.remove('active');
             }
 
             const formData = new FormData();
@@ -585,18 +588,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 const data = await res.json();
 
-                // Hide hamster loading overlay with smooth fade out
-                if (hamsterOverlay) {
-                    hamsterOverlay.classList.remove('active');
-                    setTimeout(() => { hamsterOverlay.style.display = 'none'; }, 300);
-                }
-
                 if (data.success) {
                     window.selectedCreateFiles = [];
                     if (window.updateCreateAttachmentsPreview) window.updateCreateAttachmentsPreview();
 
                     const createAnother = document.getElementById('createAnotherCheck');
                     if (createAnother && createAnother.checked) {
+                        if (hamsterOverlay) {
+                            hamsterOverlay.classList.remove('active');
+                            setTimeout(() => { hamsterOverlay.style.display = 'none'; }, 200);
+                        }
+                        if (createModal) {
+                            createModal.style.display = 'flex';
+                            createModal.classList.add('active');
+                        }
                         document.getElementById('createSubject').value = '';
                         document.getElementById('createDescription').value = '';
                         const startEl = document.getElementById('createStartDate');
@@ -605,18 +610,31 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (dueEl) dueEl.value = '';
                         alert('Ticket ' + data.ticket_code + ' created successfully!');
                     } else {
+                        // Smooth reload to show the newly created ticket on board
                         location.reload();
                     }
                 } else {
+                    if (hamsterOverlay) {
+                        hamsterOverlay.classList.remove('active');
+                        setTimeout(() => { hamsterOverlay.style.display = 'none'; }, 200);
+                    }
+                    if (createModal) {
+                        createModal.style.display = 'flex';
+                        createModal.classList.add('active');
+                    }
                     alert('Error: ' + data.error);
                 }
             } catch (err) {
-                // Hide hamster on error too
                 if (hamsterOverlay) {
                     hamsterOverlay.classList.remove('active');
-                    setTimeout(() => { hamsterOverlay.style.display = 'none'; }, 300);
+                    setTimeout(() => { hamsterOverlay.style.display = 'none'; }, 200);
+                }
+                if (createModal) {
+                    createModal.style.display = 'flex';
+                    createModal.classList.add('active');
                 }
                 console.error(err);
+                alert('An error occurred while creating the ticket.');
             }
         });
     }
