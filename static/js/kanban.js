@@ -968,6 +968,20 @@ document.addEventListener('DOMContentLoaded', () => {
         function applyLiveBoardUpdates(tickets, columnCounts) {
             if (!tickets) return;
 
+            const validTicketIds = new Set(tickets.map(t => String(t.ticket_id)));
+
+            // 1. Remove deleted tickets from DOM if no longer in ticket list
+            document.querySelectorAll('.ticket-card[data-ticket-id]').forEach(card => {
+                const tid = card.getAttribute('data-ticket-id');
+                if (tid && !validTicketIds.has(String(tid))) {
+                    card.style.transition = 'all 0.3s ease';
+                    card.style.opacity = '0';
+                    card.style.transform = 'scale(0.8)';
+                    setTimeout(() => { card.remove(); }, 300);
+                }
+            });
+
+            // 2. Update column positions for existing tickets
             tickets.forEach(t => {
                 const card = document.querySelector(`.ticket-card[data-ticket-id="${t.ticket_id}"]`);
                 if (card && t.status_id) {
@@ -988,7 +1002,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
 
-            // Update column card counts
+            // 3. Update column card counts
             if (columnCounts) {
                 Object.keys(columnCounts).forEach(statusId => {
                     const colContainer = document.querySelector(`.column-cards-container[data-status-id="${statusId}"]`);
@@ -1012,6 +1026,51 @@ document.addEventListener('DOMContentLoaded', () => {
                 checkBoardSync();
             }
         });
+
+        // Initialize Global Board Pusher Channel for real-time live deletes, creates, and status updates across devices
+        if (typeof Pusher !== 'undefined' && !window._globalBoardPusherBound) {
+            window._globalBoardPusherBound = true;
+            try {
+                if (!window._pusherClient) {
+                    window._pusherClient = new Pusher('308cbea8f43adedfd722', { cluster: 'ap1' });
+                }
+                const boardChannel = window._pusherClient.subscribe('board_channel');
+
+                boardChannel.bind('ticket-deleted', function(data) {
+                    if (!data || !data.ticket_id) return;
+                    const card = document.querySelector(`.ticket-card[data-ticket-id="${data.ticket_id}"]`);
+                    if (card) {
+                        card.style.transition = 'all 0.3s ease';
+                        card.style.opacity = '0';
+                        card.style.transform = 'scale(0.8)';
+                        setTimeout(() => {
+                            const col = card.closest('.kanban-column');
+                            card.remove();
+                            if (col) {
+                                const countBadge = col.querySelector('.column-count');
+                                const remaining = col.querySelectorAll('.ticket-card').length;
+                                if (countBadge) countBadge.textContent = remaining;
+                            }
+                        }, 300);
+                    }
+                    if (window._currentTicketData && String(window._currentTicketData.ticket_id) === String(data.ticket_id)) {
+                        const modal = document.getElementById('ticketDetailModal');
+                        if (modal) modal.style.display = 'none';
+                    }
+                });
+
+                boardChannel.bind('ticket-created', function() {
+                    checkBoardSync();
+                });
+
+                boardChannel.bind('ticket-updated', function() {
+                    checkBoardSync();
+                });
+            } catch (err) {
+                console.warn('Pusher board sync error:', err);
+            }
+        }
+
     })();
 
 

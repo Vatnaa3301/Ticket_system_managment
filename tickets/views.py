@@ -963,6 +963,14 @@ def api_update_status(request, ticket_id):
         ticket.save()
         bump_board_version()
 
+        try:
+            pusher_client.trigger('board_channel', 'ticket-updated', {
+                'ticket_id': ticket.ticket_id,
+                'status_id': new_status.status_id
+            })
+        except Exception:
+            pass
+
         # Log change
         user = request.user if hasattr(request, 'user') and request.user.is_authenticated else User.objects.first()
         TicketLog.objects.create(
@@ -1197,6 +1205,15 @@ def api_create_ticket(request):
             action_type="Create",
             new_value=f"Created {ticket.ticket_code}"
         )
+        bump_board_version()
+
+        try:
+            pusher_client.trigger('board_channel', 'ticket-created', {
+                'ticket_id': ticket.ticket_id,
+                'ticket_code': ticket.ticket_code
+            })
+        except Exception:
+            pass
 
         return JsonResponse({'success': True, 'ticket_id': ticket.ticket_id, 'ticket_code': ticket.ticket_code})
     except Exception as e:
@@ -1545,6 +1562,16 @@ def api_delete_ticket(request, ticket_id):
     try:
         ticket_code = ticket.ticket_code
         ticket.delete()
+        bump_board_version()
+
+        try:
+            pusher_client.trigger('board_channel', 'ticket-deleted', {
+                'ticket_id': ticket_id,
+                'ticket_code': ticket_code
+            })
+        except Exception:
+            pass
+
         return JsonResponse({'success': True, 'ticket_code': ticket_code})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=400)
