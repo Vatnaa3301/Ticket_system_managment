@@ -2744,5 +2744,17 @@ textarea.form-control,
     border-top: 1px solid #38383e !important;
 }
 
+@keyframes fadeInCard {
+    0% {
+        opacity: 0;
+        transform: scale(0.95) translateY(-4px);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+
 
 

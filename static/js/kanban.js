@@ -1056,15 +1056,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (!card) {
                             // NEW TICKET CREATED ON ANOTHER DEVICE! Build and append new card to column
                             card = createCardElement(t);
-                            card.style.opacity = '0';
-                            card.style.transform = 'scale(0.9)';
-                            card.style.transition = 'all 0.3s ease';
                             targetColumnContainer.appendChild(card);
-                            setTimeout(() => {
-                                card.style.opacity = '1';
-                                card.style.transform = 'scale(1)';
-                                setTimeout(() => { card.style.transition = ''; }, 300);
-                            }, 50);
+                            card.style.animation = 'fadeInCard 0.25s ease-out';
+                            if (window.updateCardStatusIcon) window.updateCardStatusIcon(card);
                         } else if (card.parentElement !== targetColumnContainer) {
                             // TICKET MOVED TO DIFFERENT COLUMN!
                             card.style.transition = 'transform 0.25s ease, opacity 0.25s ease';
@@ -1148,15 +1142,9 @@ document.addEventListener('DOMContentLoaded', () => {
                             const targetColumnContainer = document.querySelector(`.column-cards-container[data-status-id="${data.status_id}"]`);
                             if (targetColumnContainer) {
                                 card = createCardElement(data);
-                                card.style.opacity = '0';
-                                card.style.transform = 'scale(0.9)';
-                                card.style.transition = 'all 0.3s ease';
                                 targetColumnContainer.appendChild(card);
-                                setTimeout(() => {
-                                    card.style.opacity = '1';
-                                    card.style.transform = 'scale(1)';
-                                    setTimeout(() => { card.style.transition = ''; }, 300);
-                                }, 50);
+                                card.style.animation = 'fadeInCard 0.25s ease-out';
+                                if (window.updateCardStatusIcon) window.updateCardStatusIcon(card);
                                 if (window.updateColumnCounts) window.updateColumnCounts();
                             }
                         }
