@@ -96,15 +96,19 @@ function showTicketDetailSkeleton() {
 }
 
 // GLOBAL TICKET DETAIL MODAL POPUP FUNCTION
-window.openTicketDetailModal = async function(ticketId) {
+window.openTicketDetailModal = async function(ticketId, isSilentRefresh = false) {
     const targetModal = document.getElementById('ticketDetailModal');
+    const isAlreadyOpen = targetModal && targetModal.classList.contains('active') && targetModal.style.display !== 'none';
+
     if (targetModal) {
         targetModal.style.display = 'flex';
         targetModal.classList.add('active');
     }
 
-    // Immediately render Skeleton Loader placeholder layout with shimmer animation
-    showTicketDetailSkeleton();
+    // Only render Skeleton Loader when freshly opening the modal from the board, NOT on comment/edit refresh
+    if (!isAlreadyOpen && !isSilentRefresh) {
+        showTicketDetailSkeleton();
+    }
 
     try {
         const res = await fetch(`/api/tickets/${ticketId}/details/`);
@@ -1353,7 +1357,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await res.json();
                 if (data.success) {
                     modalUploadInput.value = '';
-                    window.openTicketDetailModal(ticketId);
+                    window.openTicketDetailModal(ticketId, true);
                 } else {
                     alert('Upload failed: ' + data.error);
                 }
@@ -1400,7 +1404,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 const data = await res.json();
                 if (data.success) {
-                    window.openTicketDetailModal(ticketId);
+                    window.openTicketDetailModal(ticketId, true);
                 } else {
                     alert('Upload failed: ' + data.error);
                 }
@@ -1463,7 +1467,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await res.json();
                 if (data.success) {
                     if (input) input.value = '';
-                    window.openTicketDetailModal(ticketId); // Refresh modal
+                    window.openTicketDetailModal(ticketId, true); // Silent refresh modal
                 }
             } catch (err) {
                 console.error(err);
