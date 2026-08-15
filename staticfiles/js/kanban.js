@@ -95,6 +95,202 @@ function showTicketDetailSkeleton() {
     if (createdEl) createdEl.innerHTML = '<span class="skeleton-shimmer" style="width:120px; height:14px; display:inline-block;"></span>';
 }
 
+// ==================== SKELETON LOADER FOR KANBAN BOARD ====================
+function showBoardSkeleton() {
+    const columns = document.querySelectorAll('.kanban-column');
+    if (!columns || columns.length === 0) return;
+
+    columns.forEach((col, colIdx) => {
+        // Skeletonize column count badge
+        const countBadge = col.querySelector('.column-count');
+        if (countBadge) {
+            countBadge.innerHTML = '<span class="skeleton" style="width:16px; height:14px; border-radius:6px; display:inline-block;"></span>';
+        }
+
+        // Column cards container
+        const cardsContainer = col.querySelector('.column-cards-container');
+        if (cardsContainer) {
+            // Render 2-3 skeleton task cards per column
+            const cardCounts = [3, 2, 3, 2];
+            const count = cardCounts[colIdx % cardCounts.length];
+            let skeletonCardsHtml = '';
+            
+            for (let i = 0; i < count; i++) {
+                const titleWidth = (i % 3 === 0) ? '75%' : ((i % 3 === 1) ? '60%' : '82%');
+                const showDue = (i % 2 === 0);
+                const dueWidth = (i % 2 === 0) ? '85px' : '92px';
+                
+                skeletonCardsHtml += `
+                    <div class="ticket-card" style="pointer-events: none;">
+                        <div class="card-title">
+                            <div class="skeleton" style="width: ${titleWidth}; height: 16px; border-radius: 4px; margin-bottom: 2px;"></div>
+                        </div>
+                        ${showDue ? `
+                        <div>
+                            <div class="card-due-label">Due date</div>
+                            <div class="card-due-date">
+                                <span class="skeleton" style="width: ${dueWidth}; height: 14px; border-radius: 3px;"></span>
+                            </div>
+                        </div>
+                        ` : ''}
+                        <div class="card-key-row" style="margin-top: 4px;">
+                            <div class="key-tag">
+                                <span class="skeleton" style="width: 14px; height: 14px; border-radius: 3px;"></span>
+                                <span class="skeleton" style="width: 55px; height: 14px; border-radius: 3px;"></span>
+                            </div>
+                            <div style="display:flex; align-items:center; gap:6px;">
+                                <span class="skeleton" style="width: 14px; height: 14px; border-radius: 3px;"></span>
+                                <div class="skeleton skeleton-circle" style="width: 22px; height: 22px;"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            cardsContainer.innerHTML = skeletonCardsHtml;
+        }
+    });
+}
+
+function renderBoardData(data) {
+    if (!data || !data.columns) return;
+
+    data.columns.forEach(colData => {
+        const columnEl = document.querySelector(`.column-cards-container[data-status-id="${colData.status_id}"]`);
+        const headerEl = columnEl ? columnEl.closest('.kanban-column') : null;
+        
+        if (headerEl) {
+            const countBadge = headerEl.querySelector('.column-count');
+            if (countBadge) {
+                countBadge.textContent = colData.count;
+            }
+        }
+
+        if (columnEl) {
+            let cardsHtml = '';
+            if (colData.tickets && colData.tickets.length > 0) {
+                colData.tickets.forEach(t => {
+                    const isDone = ['done', 'resolved', 'closed'].includes(colData.status_name.toLowerCase());
+                    const keyIconHtml = isDone
+                        ? `<div class="key-icon-box key-icon-green" title="Done"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>`
+                        : `<div class="key-icon-box key-icon-blue" title="Task"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></div>`;
+
+                    const priorityIcons = {
+                        'Highest': `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ff5630" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:block;"><polyline points="17 11 12 6 7 11"></polyline><polyline points="17 17 12 12 7 17"></polyline></svg>`,
+                        'High': `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ff5630" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:block;"><polyline points="18 15 12 9 6 15"></polyline></svg>`,
+                        'Medium': `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ff9900" stroke-width="2.5" stroke-linecap="round" style="display:block;"><line x1="5" y1="9" x2="19" y2="9"></line><line x1="5" y1="15" x2="19" y2="15"></line></svg>`,
+                        'Low': `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2684ff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:block;"><polyline points="6 9 12 15 18 9"></polyline></svg>`,
+                        'Lowest': `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2684ff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:block;"><polyline points="7 7 12 12 17 7"></polyline><polyline points="7 13 12 18 17 13"></polyline></svg>`
+                    };
+                    const prioIcon = priorityIcons[t.priority_name] || `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#626f86" stroke-width="2" stroke-linecap="round" style="display:block;"><line x1="5" y1="12" x2="19" y2="12"></line></svg>`;
+
+                    let avatarHtml = '';
+                    if (t.assigned_to) {
+                        if (t.assigned_to.profile_image) {
+                            avatarHtml = `<img src="${t.assigned_to.profile_image}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`;
+                        } else {
+                            avatarHtml = t.assigned_to.initials;
+                        }
+                    } else {
+                        avatarHtml = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`;
+                    }
+
+                    cardsHtml += `
+                        <div class="ticket-card" draggable="true" data-ticket-id="${t.ticket_id}">
+                            <div class="card-title">
+                                <span>${t.subject}</span>
+                                <button type="button" class="card-menu-btn no-modal"
+                                        onclick="openCardMenu(event, this, ${t.ticket_id}, '${t.ticket_code}', ${colData.status_id})"
+                                        title="Actions">•••</button>
+                            </div>
+                            
+                            ${t.due_date ? `
+                            <div>
+                                <div class="card-due-label">Due date</div>
+                                <div class="card-due-date" style="display:inline-flex; align-items:center; gap:4px; ${t.is_due_soon ? 'color:#ff5630; font-weight:600;' : ''}">
+                                    <span>${t.due_date}</span>
+                                    ${t.is_due_soon ? `
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ff5630" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" title="Due within 1 day or overdue" style="flex-shrink:0;">
+                                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                                        <line x1="12" y1="9" x2="12" y2="13"></line>
+                                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                                    </svg>
+                                    ` : ''}
+                                </div>
+                            </div>
+                            ` : ''}
+
+                            <div class="card-key-row">
+                                <div class="key-tag">
+                                    ${keyIconHtml}
+                                    <span>${t.ticket_code}</span>
+                                </div>
+
+                                <div style="display:flex; align-items:center; gap:6px;">
+                                    <button type="button" class="card-priority-btn no-modal"
+                                            data-ticket-id="${t.ticket_id}"
+                                            data-priority-id="${t.priority_id || ''}"
+                                            data-priority-name="${t.priority_name || ''}"
+                                            onclick="openPriorityMenu(event, this)"
+                                            title="Change Priority"
+                                            style="width:22px; height:22px; padding:0; align-self:center;">
+                                        ${prioIcon}
+                                    </button>
+
+                                    <div class="user-avatar" title="${t.assigned_to ? t.assigned_to.name : 'Unassigned'}" style="width:22px; height:22px; font-size:9.5px; flex-shrink:0; align-self:center; background:${t.assigned_to ? t.assigned_to.avatar_color : '#626f86'}; color:#ffffff; font-weight:700; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; overflow:hidden;">
+                                        ${avatarHtml}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            columnEl.innerHTML = cardsHtml;
+        }
+    });
+
+    if (window.initDragAndDrop) {
+        window.initDragAndDrop();
+    }
+}
+
+async function fetchBoardData(pushUrl = true) {
+    showBoardSkeleton();
+
+    const form = document.querySelector('.board-toolbar form');
+    const params = new URLSearchParams();
+
+    if (form) {
+        const formData = new FormData(form);
+        for (const [key, val] of formData.entries()) {
+            if (val) params.append(key, val);
+        }
+    }
+
+    const queryString = params.toString();
+    const apiUrl = '/api/board/sync/' + (queryString ? '?' + queryString : '');
+    const pageUrl = window.location.pathname + (queryString ? '?' + queryString : '');
+
+    if (pushUrl) {
+        window.history.pushState({}, '', pageUrl);
+    }
+
+    try {
+        const res = await fetch(apiUrl);
+        if (!res.ok) throw new Error('Failed to fetch board data');
+        const data = await res.json();
+        if (data.success) {
+            renderBoardData(data);
+        }
+    } catch (err) {
+        console.error('Board data fetch error:', err);
+    }
+}
+
+window.showBoardSkeleton = showBoardSkeleton;
+window.renderBoardData = renderBoardData;
+window.fetchBoardData = fetchBoardData;
+
 // GLOBAL TICKET DETAIL MODAL POPUP FUNCTION
 window.openTicketDetailModal = async function(ticketId, isSilentRefresh = false) {
     const targetModal = document.getElementById('ticketDetailModal');

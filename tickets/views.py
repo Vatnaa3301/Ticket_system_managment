@@ -565,10 +565,8 @@ def api_create_user(request):
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
-@login_required
-def board_view(request):
-
-    """Render Jira-inspired Kanban board view."""
+def get_board_columns_data(request):
+    """Retrieve board columns with tickets and counts based on filters."""
     statuses = TicketStatus.objects.all().order_by('order')
     categories = TicketCategory.objects.all()
     priorities = Priority.objects.all()
@@ -591,29 +589,115 @@ def board_view(request):
     if assignee_filter:
         tickets_qs = tickets_qs.filter(assigned_to_id=assignee_filter)
 
-    # Group tickets by status
-    board_columns = []
+    today = timezone.localdate()
+    one_day_later = today + timedelta(days=1)
+
+    columns = []
     for st in statuses:
         st_tickets = tickets_qs.filter(status=st)
-        board_columns.append({
-            'status': st,
-            'tickets': st_tickets,
-            'count': st_tickets.count()
+        ticket_items = []
+        for t in st_tickets:
+            assigned = None
+            if t.assigned_to:
+                prof = getattr(t.assigned_to, 'profile', None)
+                full_name = prof.full_name.strip() if prof and prof.full_name else t.assigned_to.username
+                parts = full_name.split()
+                initials = (parts[0][0] + parts[-1][0]).upper() if len(parts) >= 2 else full_name[:2].upper()
+                assigned = {
+                    'id': t.assigned_to.id,
+                    'name': full_name,
+                    'initials': initials,
+                    'avatar_color': prof.avatar_color if prof and prof.avatar_color else '#0052cc',
+                    'profile_image': prof.profile_image if prof and prof.profile_image else ''
+                }
+
+            is_due_soon = False
+            due_date_str = ''
+            if t.due_date:
+                due_date_str = t.due_date.strftime('%d %b %Y')
+                is_due_soon = (t.due_date <= one_day_later) and (st.status_name.lower() not in ['done', 'resolved', 'closed'])
+
+            ticket_items.append({
+                'ticket_id': t.ticket_id,
+                'ticket_code': t.ticket_code,
+                'subject': t.subject,
+                'due_date': due_date_str,
+                'is_due_soon': is_due_soon,
+                'priority_id': t.priority.priority_id if t.priority else None,
+                'priority_name': t.priority.priority_name if t.priority else '',
+                'assigned_to': assigned,
+                'status_id': st.status_id,
+                'status_name': st.status_name
+            })
+
+        columns.append({
+            'status_id': st.status_id,
+            'status_name': st.status_name,
+            'count': len(ticket_items),
+            'tickets': ticket_items
         })
 
-    context = {
-        'board_columns': board_columns,
+    return {
+        'columns': columns,
         'statuses': statuses,
         'categories': categories,
         'priorities': priorities,
         'users': users,
-        'active_view': 'board',
         'query': q,
         'cat_filter': cat_filter,
         'prio_filter': prio_filter,
         'assignee_filter': assignee_filter,
     }
+
+
+@login_required
+def board_view(request):
+    """Render Jira-inspired Kanban board view."""
+    data = get_board_columns_data(request)
+    
+    # Adapt to template expectations
+    board_columns = []
+    for col_info in data['columns']:
+        # Fetch corresponding status model
+        st_obj = next((s for s in data['statuses'] if s.status_id == col_info['status_id']), None)
+        # Fetch ticket model instances matching the filtered query
+        tickets_in_col = Ticket.objects.filter(ticket_id__in=[ti['ticket_id'] for ti in col_info['tickets']]).select_related('status', 'priority', 'category', 'user', 'assigned_to')
+        board_columns.append({
+            'status': st_obj,
+            'tickets': tickets_in_col,
+            'count': col_info['count']
+        })
+
+    context = {
+        'board_columns': board_columns,
+        'statuses': data['statuses'],
+        'categories': data['categories'],
+        'priorities': data['priorities'],
+        'users': data['users'],
+        'active_view': 'board',
+        'query': data['query'],
+        'cat_filter': data['cat_filter'],
+        'prio_filter': data['prio_filter'],
+        'assignee_filter': data['assignee_filter'],
+    }
     return render(request, 'tickets/board.html', context)
+
+
+@login_required
+def api_board_sync(request):
+    """API endpoint to fetch live board columns JSON for smooth skeleton transitions."""
+    try:
+        data = get_board_columns_data(request)
+        # Serialize statuses, categories, priorities for client if needed
+        data['statuses'] = [{'status_id': s.status_id, 'status_name': s.status_name} for s in data['statuses']]
+        data['categories'] = [{'category_id': c.category_id, 'category_name': c.category_name} for c in data['categories']]
+        data['priorities'] = [{'priority_id': p.priority_id, 'priority_name': p.priority_name} for p in data['priorities']]
+        data['users'] = [{'id': u.id, 'username': u.username} for u in data['users']]
+        data['success'] = True
+        return JsonResponse(data)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
 
 
 @login_required
