@@ -1119,24 +1119,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 boardChannel.bind('ticket-deleted', function(data) {
                     if (!data || !data.ticket_id) return;
-                    const card = document.querySelector(`.ticket-card[data-ticket-id="${data.ticket_id}"]`);
-                    if (card) {
-                        card.style.transition = 'all 0.3s ease';
-                        card.style.opacity = '0';
-                        card.style.transform = 'scale(0.8)';
-                        setTimeout(() => {
-                            const col = card.closest('.kanban-column');
-                            card.remove();
-                            if (col) {
-                                const countBadge = col.querySelector('.column-count');
-                                const remaining = col.querySelectorAll('.ticket-card').length;
-                                if (countBadge) countBadge.textContent = remaining;
-                            }
-                        }, 300);
-                    }
-                    if (window._currentTicketData && String(window._currentTicketData.ticket_id) === String(data.ticket_id)) {
+                    const targetId = String(data.ticket_id);
+                    document.querySelectorAll('.ticket-card').forEach(card => {
+                        const cardId = String(card.getAttribute('data-ticket-id') || card.dataset.ticketId);
+                        if (cardId === targetId) {
+                            card.style.transition = 'all 0.3s ease';
+                            card.style.opacity = '0';
+                            card.style.transform = 'scale(0.8)';
+                            setTimeout(() => {
+                                card.remove();
+                                if (window.updateColumnCounts) window.updateColumnCounts();
+                            }, 300);
+                        }
+                    });
+                    if (window._currentTicketData && String(window._currentTicketData.ticket_id) === targetId) {
                         const modal = document.getElementById('ticketDetailModal');
-                        if (modal) modal.style.display = 'none';
+                        if (modal) {
+                            modal.classList.remove('active');
+                            modal.style.display = 'none';
+                        }
                     }
                 });
 

@@ -899,18 +899,20 @@ def bump_board_version():
 def api_board_sync(request):
     """
     Lightweight, high-performance real-time sync endpoint.
-    Returns { updated: False } if no changes occurred since last version check.
-    If changes occurred, returns updated tickets and column counts for live DOM animation.
+    Computes board version dynamically from SQL database state so all Vercel serverless containers stay 100% in sync.
     """
     try:
-        client_ver = request.GET.get('ver', 0)
-        try:
-            client_ver = int(client_ver)
-        except (ValueError, TypeError):
-            client_ver = 0
+        client_ver = str(request.GET.get('ver', '0')).strip()
 
-        if client_ver == GLOBAL_BOARD_VERSION:
-            return JsonResponse({'updated': False, 'ver': GLOBAL_BOARD_VERSION})
+        latest_ticket = Ticket.objects.order_by('-updated_at').first()
+        ticket_count = Ticket.objects.count()
+        if latest_ticket and latest_ticket.updated_at:
+            current_ver = f"{ticket_count}_{int(latest_ticket.updated_at.timestamp() * 1000)}"
+        else:
+            current_ver = f"{ticket_count}_0"
+
+        if client_ver == current_ver:
+            return JsonResponse({'updated': False, 'ver': current_ver})
 
         tickets = Ticket.objects.select_related('status', 'priority', 'assigned_to', 'assigned_to__profile').all()
         tickets_data = []
@@ -934,7 +936,6 @@ def api_board_sync(request):
                 'assignee_image': prof.profile_image if prof and prof.profile_image else '',
             })
 
-
         statuses = TicketStatus.objects.all()
         counts = {}
         for st in statuses:
@@ -942,12 +943,13 @@ def api_board_sync(request):
 
         return JsonResponse({
             'updated': True,
-            'ver': GLOBAL_BOARD_VERSION,
+            'ver': current_ver,
             'tickets': tickets_data,
             'column_counts': counts
         })
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
 
 
 @csrf_exempt
