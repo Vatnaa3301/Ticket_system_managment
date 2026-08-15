@@ -416,10 +416,10 @@ window.toggleInlineReplyForm = function(commentId, authorName, ticketId) {
     container.style.display = 'block';
     container.innerHTML = `
         <div class="inline-reply-box">
-            <textarea id="replyInput-${commentId}" class="form-control" rows="2" style="background:#28282c; border:1px solid #38383e; color:#cecfd2; font-size:13px; resize:vertical; width:100%; border-radius:4px; padding:8px;" placeholder="Replying to @${authorName}..."></textarea>
+            <textarea id="replyInput-${commentId}" class="reply-textarea" rows="2" placeholder="Replying to @${authorName}..."></textarea>
             <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:8px;">
-                <button type="button" class="btn-secondary" onclick="toggleInlineReplyForm(${commentId}, '${authorName}', ${ticketId})" style="padding:4px 12px; font-size:12px;">Cancel</button>
-                <button type="button" class="btn-primary" onclick="submitInlineReply(${commentId}, ${ticketId})" style="padding:4px 14px; font-size:12px; background:#0052cc;">Reply</button>
+                <button type="button" class="btn-secondary" onclick="toggleInlineReplyForm(${commentId}, '${authorName}', ${ticketId})" style="padding:4px 12px; font-size:12px; border-radius:4px; cursor:pointer;">Cancel</button>
+                <button type="button" class="btn-primary" onclick="submitInlineReply(${commentId}, ${ticketId})" style="padding:4px 14px; font-size:12px; border-radius:4px; background:#0052cc; color:#ffffff; font-weight:600; cursor:pointer;">Reply</button>
             </div>
         </div>
     `;
@@ -444,7 +444,7 @@ window.submitInlineReply = async function(commentId, ticketId) {
         });
         const data = await res.json();
         if (data.success) {
-            window.openTicketDetailModal(ticketId);
+            window.openTicketDetailModal(ticketId, true); // Silent refresh
         } else {
             alert(data.error || 'Failed to submit reply.');
         }

@@ -1066,8 +1066,12 @@ body {
     left: 0;
     width: 2px;
     height: calc(100% - 14px);
-    background: #38383e;
+    background: #dfe1e6;
     border-radius: 1px;
+}
+
+[data-theme="dark"] .comment-thread-container::before {
+    background: #38383e;
 }
 
 /* Individual reply item curved connector */
@@ -1083,15 +1087,20 @@ body {
     left: -18px;
     width: 14px;
     height: 18px;
+    border-left: 2px solid #dfe1e6;
+    border-bottom: 2px solid #dfe1e6;
+    border-bottom-left-radius: 10px;
+}
+
+[data-theme="dark"] .comment-reply-item::before {
     border-left: 2px solid #38383e;
     border-bottom: 2px solid #38383e;
-    border-bottom-left-radius: 10px;
 }
 
 .btn-reply-comment {
     background: transparent;
     border: none;
-    color: #8c9bab;
+    color: var(--jira-text-muted, #626f86);
     font-size: 12px;
     font-weight: 600;
     cursor: pointer;
@@ -1105,17 +1114,62 @@ body {
 }
 
 .btn-reply-comment:hover {
+    color: var(--jira-blue, #0052cc);
+    background: rgba(0, 82, 204, 0.08);
+}
+
+[data-theme="dark"] .btn-reply-comment {
+    color: #8c9bab;
+}
+
+[data-theme="dark"] .btn-reply-comment:hover {
     color: #579dff;
     background: rgba(87, 157, 255, 0.1);
 }
 
+/* Inline Reply Box */
 .inline-reply-box {
     margin-top: 10px;
-    margin-left: 32px;
-    padding: 10px;
+    padding: 12px;
+    background: var(--jira-bg-subtle, #f4f5f7);
+    border: 1px solid var(--jira-border, #dfe1e6);
+    border-radius: 6px;
+}
+
+[data-theme="dark"] .inline-reply-box {
     background: #1e1e22;
     border: 1px solid #38383e;
-    border-radius: 6px;
+}
+
+.inline-reply-box .reply-textarea {
+    background: var(--jira-card-bg, #ffffff);
+    border: 1px solid var(--jira-border, #dfe1e6);
+    color: var(--jira-text-dark, #172b4d);
+    font-size: 13px;
+    resize: vertical;
+    width: 100%;
+    border-radius: 4px;
+    padding: 8px 10px;
+    font-family: inherit;
+    box-sizing: border-box;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.inline-reply-box .reply-textarea:focus {
+    outline: none;
+    border-color: #0052cc;
+    box-shadow: 0 0 0 1px #0052cc;
+}
+
+[data-theme="dark"] .inline-reply-box .reply-textarea {
+    background: #28282c;
+    border: 1px solid #38383e;
+    color: #cecfd2;
+}
+
+[data-theme="dark"] .inline-reply-box .reply-textarea:focus {
+    border-color: #579dff;
+    box-shadow: 0 0 0 1px #579dff;
 }
 
 /* PRIORITY DROPDOWN SELECTOR IN LIST VIEW */
