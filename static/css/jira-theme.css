@@ -2989,30 +2989,61 @@ textarea.form-control,
     to { transform: rotate(-1turn); }
 }
 
-/* ==================== SKELETON LOADER ==================== */
+/* ==================== FACEBOOK-STYLE SKELETON LOADER ==================== */
 .skeleton-shimmer {
-    background: linear-gradient(90deg, var(--jira-column-bg, #f4f5f7) 25%, var(--jira-border, #ebecf0) 50%, var(--jira-column-bg, #f4f5f7) 75%) !important;
-    background-size: 200% 100% !important;
-    animation: skeletonShimmer 1.5s infinite ease-in-out !important;
-    border-radius: 4px !important;
+    position: relative !important;
+    overflow: hidden !important;
+    background-color: #e4e6eb !important;
+    border-radius: 6px !important;
     display: inline-block !important;
     color: transparent !important;
     user-select: none !important;
     pointer-events: none !important;
     border: none !important;
+    vertical-align: middle !important;
 }
 
 [data-theme="dark"] .skeleton-shimmer {
-    background: linear-gradient(90deg, #222226 25%, #2e2e34 50%, #222226 75%) !important;
-    background-size: 200% 100% !important;
+    background-color: #2b2b2f !important;
 }
 
-@keyframes skeletonShimmer {
+.skeleton-shimmer::after {
+    content: "" !important;
+    position: absolute !important;
+    top: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    transform: translateX(-100%) !important;
+    background-image: linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0) 0%,
+        rgba(255, 255, 255, 0.4) 30%,
+        rgba(255, 255, 255, 0.7) 50%,
+        rgba(255, 255, 255, 0.4) 70%,
+        rgba(255, 255, 255, 0) 100%
+    ) !important;
+    animation: fbSkeletonShimmer 1.4s infinite cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+[data-theme="dark"] .skeleton-shimmer::after {
+    background-image: linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0) 0%,
+        rgba(255, 255, 255, 0.05) 30%,
+        rgba(255, 255, 255, 0.12) 50%,
+        rgba(255, 255, 255, 0.05) 70%,
+        rgba(255, 255, 255, 0) 100%
+    ) !important;
+}
+
+@keyframes fbSkeletonShimmer {
     0% {
-        background-position: 200% 0;
+        transform: translateX(-100%) !important;
     }
     100% {
-        background-position: -200% 0;
+        transform: translateX(100%) !important;
     }
 }
+
 
