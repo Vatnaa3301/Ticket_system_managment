@@ -134,13 +134,26 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 # Cloudflare R2 / S3 Configuration for Media Storage
-AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
-AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
-AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME')
-AWS_S3_ENDPOINT_URL = os.environ.get('AWS_S3_ENDPOINT_URL')
-AWS_S3_CUSTOM_DOMAIN = os.environ.get('AWS_S3_CUSTOM_DOMAIN')
+AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID', '').strip() or None
+AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY', '').strip() or None
+AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME', '').strip() or None
+
+raw_endpoint = os.environ.get('AWS_S3_ENDPOINT_URL', '').strip().strip('"').strip("'")
+if raw_endpoint:
+    if not raw_endpoint.startswith('http://') and not raw_endpoint.startswith('https://'):
+        raw_endpoint = f'https://{raw_endpoint}'
+    AWS_S3_ENDPOINT_URL = raw_endpoint.rstrip('/')
+else:
+    AWS_S3_ENDPOINT_URL = None
+
+raw_custom_domain = os.environ.get('AWS_S3_CUSTOM_DOMAIN', '').strip().strip('"').strip("'")
+if raw_custom_domain:
+    AWS_S3_CUSTOM_DOMAIN = raw_custom_domain.replace('https://', '').replace('http://', '').rstrip('/')
+else:
+    AWS_S3_CUSTOM_DOMAIN = None
+
 AWS_S3_SIGNATURE_VERSION = 's3v4'
-AWS_S3_REGION_NAME = 'auto'
+AWS_S3_REGION_NAME = os.environ.get('AWS_S3_REGION_NAME', 'us-east-1')
 AWS_S3_FILE_OVERWRITE = False
 AWS_QUERYSTRING_AUTH = False
 
@@ -162,6 +175,7 @@ else:
             "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
         },
     }
+
 
 
 # Email Configuration
