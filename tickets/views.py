@@ -3,6 +3,7 @@ import os
 import pusher
 import resend
 from datetime import date, timedelta, datetime
+from django.db.models import Q, Count
 from django.utils import timezone
 from django.utils.timesince import timesince
 from django.shortcuts import render, get_object_or_404, redirect
@@ -798,19 +799,55 @@ def list_view(request):
 
 @login_required
 def summary_view(request):
-    """Render executive dashboard metrics summary matching exact Jira Summary layout."""
+    """Render executive dashboard metrics summary matching exact Jira Summary layout with interactive filters."""
     try:
         now = timezone.now()
         seven_days_ago = now - timedelta(days=7)
         today = timezone.localdate()
         seven_days_later = today + timedelta(days=7)
 
-        # Top KPI Metrics (Last 7 days / Next 7 days)
-        total_tickets = Ticket.objects.count()
-        completed_last_7_days = Ticket.objects.filter(status__status_name__iexact='done', updated_at__gte=seven_days_ago).count()
-        updated_last_7_days = Ticket.objects.filter(updated_at__gte=seven_days_ago).count()
-        created_last_7_days = Ticket.objects.filter(created_at__gte=seven_days_ago).count()
-        due_soon_next_7_days = Ticket.objects.exclude(status__status_name__in=['Done', 'Closed']).filter(
+        # Retrieve filter parameters
+        selected_assignees = request.GET.getlist('assignee')
+        selected_statuses = request.GET.getlist('status')
+
+        # Base tickets queryset
+        tickets_qs = Ticket.objects.all()
+
+        # Apply Assignee Filter
+        if selected_assignees:
+            q_assignee = Q()
+            user_ids = []
+            for a in selected_assignees:
+                if a == 'unassigned':
+                    q_assignee |= Q(assigned_to__isnull=True)
+                elif a == 'current':
+                    q_assignee |= Q(assigned_to=request.user)
+                else:
+                    try:
+                        user_ids.append(int(a))
+                    except (ValueError, TypeError):
+                        pass
+            if user_ids:
+                q_assignee |= Q(assigned_to_id__in=user_ids)
+            tickets_qs = tickets_qs.filter(q_assignee)
+
+        # Apply Status Filter
+        if selected_statuses:
+            status_ids = []
+            for s in selected_statuses:
+                try:
+                    status_ids.append(int(s))
+                except (ValueError, TypeError):
+                    pass
+            if status_ids:
+                tickets_qs = tickets_qs.filter(status_id__in=status_ids)
+
+        # Top KPI Metrics (from filtered tickets)
+        total_tickets = tickets_qs.count()
+        completed_last_7_days = tickets_qs.filter(status__status_name__iexact='done', updated_at__gte=seven_days_ago).count()
+        updated_last_7_days = tickets_qs.filter(updated_at__gte=seven_days_ago).count()
+        created_last_7_days = tickets_qs.filter(created_at__gte=seven_days_ago).count()
+        due_soon_next_7_days = tickets_qs.exclude(status__status_name__in=['Done', 'Closed']).filter(
             due_date__gte=today,
             due_date__lte=seven_days_later
         ).count()
@@ -827,7 +864,7 @@ def summary_view(request):
         
         total_status_sum = 0
         for st in statuses:
-            c = Ticket.objects.filter(status=st).count()
+            c = tickets_qs.filter(status=st).count()
             total_status_sum += c
             s_name_lower = st.status_name.lower().strip()
             color = status_colors.get(s_name_lower, '#6b7280')
@@ -836,6 +873,7 @@ def summary_view(request):
                 'name': st.status_name,
                 'count': c,
                 'color': color,
+                'is_selected': str(st.status_id) in selected_statuses,
             })
 
         # Calculate stroke dasharray / offsets for SVG Donut chart (r=38, C≈238.76)
@@ -854,14 +892,14 @@ def summary_view(request):
         max_prio_count = 1
         for p_name in priority_order:
             p_obj = Priority.objects.filter(priority_name__iexact=p_name).first()
-            c = Ticket.objects.filter(priority=p_obj).count() if p_obj else 0
+            c = tickets_qs.filter(priority=p_obj).count() if p_obj else 0
             if c > max_prio_count:
                 max_prio_count = c
             priority_counts.append({
                 'name': p_name,
                 'count': c,
             })
-        none_prio_count = Ticket.objects.filter(priority__isnull=True).count()
+        none_prio_count = tickets_qs.filter(priority__isnull=True).count()
         if none_prio_count > max_prio_count:
             max_prio_count = none_prio_count
         priority_counts.append({
@@ -885,7 +923,7 @@ def summary_view(request):
             'design': '🎨',
         }
         for cat in categories:
-            c = Ticket.objects.filter(category=cat).count()
+            c = tickets_qs.filter(category=cat).count()
             pct = round((c / total_tickets * 100)) if total_tickets > 0 else 0
             cat_lower = cat.category_name.lower().strip()
             icon = cat_icons.get(cat_lower, '📋')
@@ -897,8 +935,9 @@ def summary_view(request):
             })
         type_counts.sort(key=lambda x: x['count'], reverse=True)
 
-        # Recent Activity
-        recent_logs = TicketLog.objects.select_related('ticket', 'ticket__status', 'user').order_by('-created_at')[:15]
+        # Recent Activity (for filtered tickets)
+        filtered_ticket_ids = tickets_qs.values_list('ticket_id', flat=True)
+        recent_logs = TicketLog.objects.filter(ticket_id__in=filtered_ticket_ids).select_related('ticket', 'ticket__status', 'user').order_by('-created_at')[:15]
         activities = []
         for l in recent_logs:
             u = l.user
@@ -945,6 +984,29 @@ def summary_view(request):
             0
         ]
 
+        # All users for assignee checklist
+        all_users = User.objects.filter(is_active=True).select_related('profile').order_by('first_name', 'username')
+        users_list = []
+        for u in all_users:
+            prof = getattr(u, 'profile', None)
+            disp_name = prof.full_name.strip() if prof and prof.full_name else u.username
+            parts = disp_name.split()
+            initials = (parts[0][0] + parts[-1][0]).upper() if len(parts) >= 2 else (disp_name[:2]).upper()
+            avatar_color = prof.avatar_color if prof and prof.avatar_color else '#0052cc'
+            profile_image = prof.profile_image if prof and prof.profile_image else ''
+            users_list.append({
+                'id': u.id,
+                'username': u.username,
+                'name': disp_name,
+                'initials': initials,
+                'avatar_color': avatar_color,
+                'profile_image': profile_image,
+                'is_selected': str(u.id) in selected_assignees,
+                'is_current': (u.id == request.user.id),
+            })
+
+        total_active_filters = len(selected_assignees) + len(selected_statuses)
+
         context = {
             'total_tickets': total_tickets,
             'completed_last_7_days': completed_last_7_days,
@@ -958,6 +1020,14 @@ def summary_view(request):
             'max_prio_count': max_prio_count,
             'y_ticks': y_ticks,
             'active_view': 'summary',
+            'users_list': users_list,
+            'selected_assignees': selected_assignees,
+            'selected_statuses': selected_statuses,
+            'total_active_filters': total_active_filters,
+            'is_unassigned_selected': 'unassigned' in selected_assignees,
+            'is_current_user_selected': 'current' in selected_assignees,
+            'assignee_filter_count': len(selected_assignees),
+            'status_filter_count': len(selected_statuses),
         }
     except Exception as e:
         print(f"Error in summary_view: {e}")
@@ -974,6 +1044,14 @@ def summary_view(request):
             'max_prio_count': 1,
             'y_ticks': [1, 0],
             'active_view': 'summary',
+            'users_list': [],
+            'selected_assignees': [],
+            'selected_statuses': [],
+            'total_active_filters': 0,
+            'is_unassigned_selected': False,
+            'is_current_user_selected': False,
+            'assignee_filter_count': 0,
+            'status_filter_count': 0,
         }
     return render(request, 'tickets/summary.html', context)
 

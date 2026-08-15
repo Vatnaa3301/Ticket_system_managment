@@ -56,14 +56,138 @@
 <div class="summary-page-container" style="padding: 20px 24px; overflow-y: auto; flex: 1; display:flex; flex-direction:column; gap:20px; background:var(--jira-bg-subtle, #f4f5f7);">
 
     <!-- FILTER BAR ROW -->
-    <div style="display:flex; align-items:center; gap:10px;">
-        <div style="width:28px; height:28px; border-radius:50%; background:#0052cc; color:#ffffff; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; border:2px solid var(--jira-card-bg); cursor:pointer;" title="{{ request.user.username }}">
+    <div style="position:relative; display:flex; align-items:center; gap:10px;">
+        <!-- Avatar Filter (Quick toggle current user) -->
+        <a href="{% if is_current_user_selected %}{% url 'summary' %}{% else %}?assignee=current{% endif %}"
+           class="summary-user-avatar-btn {% if is_current_user_selected %}active-user-filter{% endif %}"
+           title="Filter by assigned to me ({{ request.user.username }})">
             {{ request.user.profile.full_name|default:request.user.username|slice:":2"|upper }}
-        </div>
-        <button class="summary-filter-pill">
+        </a>
+
+        <!-- Main Filter Button -->
+        <button id="summaryFilterBtn" class="summary-filter-pill {% if total_active_filters > 0 %}filter-active{% endif %}" onclick="toggleSummaryFilterPopover(event)">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
             <span>Filter</span>
+            {% if total_active_filters > 0 %}
+            <span class="filter-count-badge">{{ total_active_filters }}</span>
+            {% endif %}
         </button>
+
+        {% if total_active_filters > 0 %}
+        <!-- Clear filters button -->
+        <a href="{% url 'summary' %}" class="summary-clear-filters-link">Clear filters</a>
+        {% endif %}
+
+        <!-- JIRA 2-COLUMN FILTER POPOVER -->
+        <div id="summaryFilterPopover" class="jira-filter-popover" style="display:none;" onclick="event.stopPropagation();">
+            <form id="summaryFilterForm" method="GET" action="{% url 'summary' %}">
+                <div class="jira-filter-popover-body">
+                    <!-- LEFT COLUMN: Categories -->
+                    <div class="jira-filter-left-col">
+                        <div class="jira-filter-cat-item disabled-cat">Parent</div>
+                        
+                        <div class="jira-filter-cat-item active" id="cat-assignee" onclick="switchFilterCategory('assignee')">
+                            <span>Assignee</span>
+                            {% if assignee_filter_count > 0 %}
+                            <span class="cat-count-badge">{{ assignee_filter_count }}</span>
+                            {% endif %}
+                        </div>
+
+                        <div class="jira-filter-cat-item" id="cat-status" onclick="switchFilterCategory('status')">
+                            <span>Status</span>
+                            {% if status_filter_count > 0 %}
+                            <span class="cat-count-badge">{{ status_filter_count }}</span>
+                            {% endif %}
+                        </div>
+
+                        <div class="jira-filter-cat-item disabled-cat">Work type</div>
+                        <div class="jira-filter-cat-item disabled-cat">Labels</div>
+
+                        <div class="jira-filter-add-field">
+                            <span>+ Add field</span>
+                        </div>
+
+                        <div class="jira-filter-left-footer">
+                            <a href="{% url 'summary' %}" class="jira-filter-clear-all-link">Clear all</a>
+                        </div>
+                    </div>
+
+                    <!-- RIGHT COLUMN: Options Checklist -->
+                    <div class="jira-filter-right-col">
+                        <!-- ASSIGNEE SECTION -->
+                        <div id="filter-section-assignee" class="filter-section-panel">
+                            <div class="filter-search-box">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                <input type="text" id="assigneeSearchInput" placeholder="Search assignee" oninput="filterChecklist('assigneeSearchInput', 'assigneeListGroup')">
+                            </div>
+
+                            <div class="filter-options-list" id="assigneeListGroup">
+                                <!-- Option: Unassigned -->
+                                <label class="filter-checkbox-row">
+                                    <input type="checkbox" name="assignee" value="unassigned" {% if is_unassigned_selected %}checked{% endif %} onchange="submitFilterForm()">
+                                    <div class="filter-opt-avatar generic-avatar">
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                    </div>
+                                    <span class="filter-opt-label">Unassigned</span>
+                                </label>
+
+                                <!-- Option: Current user -->
+                                <label class="filter-checkbox-row">
+                                    <input type="checkbox" name="assignee" value="current" {% if is_current_user_selected %}checked{% endif %} onchange="submitFilterForm()">
+                                    <div class="filter-opt-avatar generic-avatar" style="background:#0052cc; color:#fff;">
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                    </div>
+                                    <span class="filter-opt-label">Current user (signed in)</span>
+                                </label>
+
+                                <!-- User Members -->
+                                {% for u in users_list %}
+                                <label class="filter-checkbox-row">
+                                    <input type="checkbox" name="assignee" value="{{ u.id }}" {% if u.is_selected %}checked{% endif %} onchange="submitFilterForm()">
+                                    <div class="filter-opt-avatar" style="background:{{ u.avatar_color }}; color:#ffffff;">
+                                        {% if u.profile_image %}
+                                        <img src="{{ u.profile_image }}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">
+                                        {% else %}
+                                        {{ u.initials }}
+                                        {% endif %}
+                                    </div>
+                                    <span class="filter-opt-label">{{ u.name }}</span>
+                                </label>
+                                {% endfor %}
+                            </div>
+
+                            <div class="filter-right-footer">
+                                <button type="button" class="filter-clear-cat-btn" onclick="clearCategoryFilters('assignee')">Clear</button>
+                                <span class="filter-count-indicator" id="assigneeCountIndicator">{{ users_list|length|add:2 }} of {{ users_list|length|add:2 }}</span>
+                            </div>
+                        </div>
+
+                        <!-- STATUS SECTION -->
+                        <div id="filter-section-status" class="filter-section-panel" style="display:none;">
+                            <div class="filter-search-box">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                <input type="text" id="statusSearchInput" placeholder="Search status" oninput="filterChecklist('statusSearchInput', 'statusListGroup')">
+                            </div>
+
+                            <div class="filter-options-list" id="statusListGroup">
+                                {% for st in status_counts %}
+                                <label class="filter-checkbox-row">
+                                    <input type="checkbox" name="status" value="{{ st.id }}" {% if st.is_selected %}checked{% endif %} onchange="submitFilterForm()">
+                                    <span class="filter-status-dot" style="background: {{ st.color }};"></span>
+                                    <span class="filter-opt-label">{{ st.name }}</span>
+                                </label>
+                                {% endfor %}
+                            </div>
+
+                            <div class="filter-right-footer">
+                                <button type="button" class="filter-clear-cat-btn" onclick="clearCategoryFilters('status')">Clear</button>
+                                <span class="filter-count-indicator" id="statusCountIndicator">{{ status_counts|length }} of {{ status_counts|length }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
     </div>
 
     <!-- 4 TOP METRIC CARDS (EXACT JIRA LAYOUT) -->
@@ -82,7 +206,7 @@
         <!-- 2: Updated -->
         <div class="summary-kpi-card">
             <div class="summary-kpi-icon-box">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
             </div>
             <div class="summary-kpi-content">
                 <div class="summary-kpi-title"><strong>{{ updated_last_7_days }}</strong> updated</div>
@@ -93,7 +217,7 @@
         <!-- 3: Created -->
         <div class="summary-kpi-card">
             <div class="summary-kpi-icon-box">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="12" y1="9" x2="12" y2="15"/></svg>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="12" y1="9" x2="12" y2="15"/></svg>
             </div>
             <div class="summary-kpi-content">
                 <div class="summary-kpi-title"><strong>{{ created_last_7_days }}</strong> created</div>
@@ -104,7 +228,7 @@
         <!-- 4: Due soon -->
         <div class="summary-kpi-card">
             <div class="summary-kpi-icon-box" style="color:#e2b203;">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
             </div>
             <div class="summary-kpi-content">
                 <div class="summary-kpi-title"><strong style="color:var(--jira-text-dark);">{{ due_soon_next_7_days }}</strong> due soon</div>
@@ -203,7 +327,7 @@
                         </div>
                     </div>
                     {% empty %}
-                    <div style="font-size:13px; color:var(--jira-text-muted); padding:16px 0; text-align:center;">No activity recorded in this space yet.</div>
+                    <div style="font-size:13px; color:var(--jira-text-muted); padding:16px 0; text-align:center;">No activity matching the current filter.</div>
                     {% endfor %}
                 </div>
             </div>
@@ -311,4 +435,73 @@
     </div>
 
 </div>
+
+<!-- JIRA FILTER JAVASCRIPT LOGIC -->
+<script>
+function toggleSummaryFilterPopover(e) {
+    if (e) e.stopPropagation();
+    const popover = document.getElementById('summaryFilterPopover');
+    if (!popover) return;
+    if (popover.style.display === 'none' || popover.style.display === '') {
+        popover.style.display = 'block';
+    } else {
+        popover.style.display = 'none';
+    }
+}
+
+// Close filter popover on outside click
+document.addEventListener('click', function(e) {
+    const popover = document.getElementById('summaryFilterPopover');
+    const filterBtn = document.getElementById('summaryFilterBtn');
+    if (popover && popover.style.display === 'block') {
+        if (!popover.contains(e.target) && !filterBtn.contains(e.target)) {
+            popover.style.display = 'none';
+        }
+    }
+});
+
+function switchFilterCategory(cat) {
+    document.querySelectorAll('.jira-filter-cat-item').forEach(el => el.classList.remove('active'));
+    const catEl = document.getElementById('cat-' + cat);
+    if (catEl) catEl.classList.add('active');
+
+    document.querySelectorAll('.filter-section-panel').forEach(p => p.style.display = 'none');
+    const panel = document.getElementById('filter-section-' + cat);
+    if (panel) panel.style.display = 'block';
+}
+
+function filterChecklist(inputId, listId) {
+    const query = document.getElementById(inputId).value.toLowerCase().trim();
+    const rows = document.querySelectorAll('#' + listId + ' .filter-checkbox-row');
+    let visibleCount = 0;
+    rows.forEach(r => {
+        const text = r.querySelector('.filter-opt-label').textContent.toLowerCase();
+        if (text.includes(query)) {
+            r.style.display = 'flex';
+            visibleCount++;
+        } else {
+            r.style.display = 'none';
+        }
+    });
+
+    const indicatorId = inputId === 'assigneeSearchInput' ? 'assigneeCountIndicator' : 'statusCountIndicator';
+    const indicator = document.getElementById(indicatorId);
+    if (indicator) {
+        indicator.textContent = visibleCount + ' of ' + rows.length;
+    }
+}
+
+function submitFilterForm() {
+    const form = document.getElementById('summaryFilterForm');
+    if (form) form.submit();
+}
+
+function clearCategoryFilters(cat) {
+    const container = document.getElementById(cat === 'assignee' ? 'assigneeListGroup' : 'statusListGroup');
+    if (!container) return;
+    const checkboxes = container.querySelectorAll('input[type="checkbox"]');
+    checkboxes.forEach(cb => cb.checked = false);
+    submitFilterForm();
+}
+</script>
 {% endblock %}
