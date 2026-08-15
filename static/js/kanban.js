@@ -152,6 +152,9 @@ window.openTicketDetailModal = async function(ticketId) {
                         id: data.comment_id,
                         parent_id: data.parent_id || null,
                         user: data.user,
+                        user_initials: data.user_initials || (data.user || 'PV').substring(0, 2).toUpperCase(),
+                        user_avatar_color: data.user_avatar_color || '#0052cc',
+                        user_profile_image: data.user_profile_image || '',
                         text: data.text,
                         is_internal: data.is_internal || false,
                         created_at: data.created_at
