@@ -965,6 +965,69 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
+        function createCardElement(t) {
+            const card = document.createElement('div');
+            card.className = 'ticket-card';
+            card.setAttribute('draggable', 'true');
+            card.setAttribute('data-ticket-id', t.ticket_id);
+
+            let prioIcon = '';
+            if (t.priority_name === 'Highest') {
+                prioIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ff5630" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:block;"><polyline points="17 11 12 6 7 11"></polyline><polyline points="17 17 12 12 7 17"></polyline></svg>`;
+            } else if (t.priority_name === 'High') {
+                prioIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ff5630" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:block;"><polyline points="18 15 12 9 6 15"></polyline></svg>`;
+            } else if (t.priority_name === 'Medium') {
+                prioIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ff9900" stroke-width="2.5" stroke-linecap="round" style="display:block;"><line x1="5" y1="9" x2="19" y2="9"></line><line x1="5" y1="15" x2="19" y2="15"></line></svg>`;
+            } else if (t.priority_name === 'Low') {
+                prioIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0065ff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:block;"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
+            } else {
+                prioIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0065ff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:block;"><polyline points="6 11 12 17 18 11"></polyline><polyline points="6 5 12 11 18 5"></polyline></svg>`;
+            }
+
+            const isDone = ['done', 'resolved', 'closed'].includes(String(t.status_name).toLowerCase());
+            const keyIcon = isDone 
+                ? `<div class="key-icon-box key-icon-green" title="Done"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>`
+                : `<div class="key-icon-box key-icon-blue" title="Task"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></div>`;
+
+            let avatarHtml = '';
+            if (t.assignee_image) {
+                avatarHtml = `<div class="assignee-avatar-icon" title="${t.assignee}"><img src="${t.assignee_image}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;"></div>`;
+            } else if (t.assignee_initials) {
+                avatarHtml = `<div class="assignee-avatar-icon" style="background:${t.assignee_color || '#0052cc'}; color:#ffffff;" title="${t.assignee}">${t.assignee_initials}</div>`;
+            } else {
+                avatarHtml = `<div class="assignee-avatar-icon unassigned-avatar" title="Unassigned"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>`;
+            }
+
+            let dueDateHtml = '';
+            if (t.due_date_formatted) {
+                const dueColor = t.is_due_soon ? 'color:#ff5630; font-weight:600;' : '';
+                const dueIcon = t.is_due_soon ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ff5630" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" title="Due within 1 day or overdue" style="flex-shrink:0;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>` : '';
+                dueDateHtml = `<div><div class="card-due-label">Due date</div><div class="card-due-date" style="display:inline-flex; align-items:center; gap:4px; ${dueColor}"><span>${t.due_date_formatted}</span>${dueIcon}</div></div>`;
+            }
+
+            card.innerHTML = `
+                <div class="card-title">
+                    <span>${t.subject}</span>
+                    <button type="button" class="card-menu-btn no-modal" onclick="openCardMenu(event, this, ${t.ticket_id}, '${t.ticket_code}', ${t.status_id})" title="Actions">•••</button>
+                </div>
+                ${dueDateHtml}
+                <div class="card-key-row">
+                    <div class="key-tag">
+                        ${keyIcon}
+                        <span>${t.ticket_code}</span>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <button type="button" class="card-priority-btn no-modal" data-ticket-id="${t.ticket_id}" data-priority-id="${t.priority_id}" data-priority-name="${t.priority_name}" onclick="openPriorityMenu(event, this)" title="Change Priority" style="width:22px; height:22px; padding:0; align-self:center;">
+                            ${prioIcon}
+                        </button>
+                        ${avatarHtml}
+                    </div>
+                </div>
+            `;
+
+            return card;
+        }
+
         function applyLiveBoardUpdates(tickets, columnCounts) {
             if (!tickets) return;
 
@@ -981,23 +1044,37 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
 
-            // 2. Update column positions for existing tickets
+            // 2. Update column positions or render newly created tickets
             tickets.forEach(t => {
-                const card = document.querySelector(`.ticket-card[data-ticket-id="${t.ticket_id}"]`);
-                if (card && t.status_id) {
+                let card = document.querySelector(`.ticket-card[data-ticket-id="${t.ticket_id}"]`);
+                if (t.status_id) {
                     const targetColumnContainer = document.querySelector(`.column-cards-container[data-status-id="${t.status_id}"]`);
-                    if (targetColumnContainer && card.parentElement !== targetColumnContainer) {
-                        // Smooth transition animation
-                        card.style.transition = 'transform 0.25s ease, opacity 0.25s ease';
-                        card.style.opacity = '0.3';
-                        card.style.transform = 'scale(0.95)';
-
-                        setTimeout(() => {
+                    if (targetColumnContainer) {
+                        if (!card) {
+                            // NEW TICKET CREATED ON ANOTHER DEVICE! Build and append new card to column
+                            card = createCardElement(t);
+                            card.style.opacity = '0';
+                            card.style.transform = 'scale(0.9)';
+                            card.style.transition = 'all 0.3s ease';
                             targetColumnContainer.appendChild(card);
-                            card.style.opacity = '1';
-                            card.style.transform = 'scale(1)';
-                            setTimeout(() => { card.style.transition = ''; }, 300);
-                        }, 180);
+                            setTimeout(() => {
+                                card.style.opacity = '1';
+                                card.style.transform = 'scale(1)';
+                                setTimeout(() => { card.style.transition = ''; }, 300);
+                            }, 50);
+                        } else if (card.parentElement !== targetColumnContainer) {
+                            // TICKET MOVED TO DIFFERENT COLUMN!
+                            card.style.transition = 'transform 0.25s ease, opacity 0.25s ease';
+                            card.style.opacity = '0.3';
+                            card.style.transform = 'scale(0.95)';
+
+                            setTimeout(() => {
+                                targetColumnContainer.appendChild(card);
+                                card.style.opacity = '1';
+                                card.style.transform = 'scale(1)';
+                                setTimeout(() => { card.style.transition = ''; }, 300);
+                            }, 180);
+                        }
                     }
                 }
             });
@@ -1016,6 +1093,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
         }
+
 
         // Smart polling interval (3 seconds)
         setInterval(checkBoardSync, 3000);

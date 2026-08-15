@@ -912,9 +912,10 @@ def api_board_sync(request):
         if client_ver == GLOBAL_BOARD_VERSION:
             return JsonResponse({'updated': False, 'ver': GLOBAL_BOARD_VERSION})
 
-        tickets = Ticket.objects.select_related('status', 'priority', 'assigned_to').all()
+        tickets = Ticket.objects.select_related('status', 'priority', 'assigned_to', 'assigned_to__profile').all()
         tickets_data = []
         for t in tickets:
+            prof = getattr(t.assigned_to, 'profile', None) if t.assigned_to else None
             tickets_data.append({
                 'ticket_id': t.ticket_id,
                 'ticket_code': t.ticket_code,
@@ -929,7 +930,10 @@ def api_board_sync(request):
                 'is_due_soon': t.is_due_soon,
                 'assignee': t.assigned_to.username if t.assigned_to else '',
                 'assignee_initials': (t.assigned_to.username[:2].upper()) if t.assigned_to else '',
+                'assignee_color': prof.avatar_color if prof else '#0052cc',
+                'assignee_image': prof.profile_image if prof and prof.profile_image else '',
             })
+
 
         statuses = TicketStatus.objects.all()
         counts = {}
