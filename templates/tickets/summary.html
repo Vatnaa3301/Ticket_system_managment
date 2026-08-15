@@ -58,48 +58,43 @@
     <!-- FILTER BAR ROW -->
     <div style="position:relative; display:flex; align-items:center; gap:10px;">
         <!-- Avatar Filter (Quick toggle current user) -->
-        <a href="{% if is_current_user_selected %}{% url 'summary' %}{% else %}?assignee=current{% endif %}"
+        <button type="button" id="summaryAvatarFilterBtn"
            class="summary-user-avatar-btn {% if is_current_user_selected %}active-user-filter{% endif %}"
+           onclick="toggleQuickUserFilter()"
            title="Filter by assigned to me ({{ request.user.username }})">
             {{ request.user.profile.full_name|default:request.user.username|slice:":2"|upper }}
-        </a>
+        </button>
 
         <!-- Main Filter Button -->
         <button id="summaryFilterBtn" class="summary-filter-pill {% if total_active_filters > 0 %}filter-active{% endif %}" onclick="toggleSummaryFilterPopover(event)">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
             <span>Filter</span>
-            {% if total_active_filters > 0 %}
-            <span class="filter-count-badge">{{ total_active_filters }}</span>
-            {% endif %}
+            <span id="filterCountBadge" class="filter-count-badge" style="{% if total_active_filters == 0 %}display:none;{% endif %}">{{ total_active_filters }}</span>
         </button>
 
-        {% if total_active_filters > 0 %}
         <!-- Clear filters button -->
-        <a href="{% url 'summary' %}" class="summary-clear-filters-link">Clear filters</a>
-        {% endif %}
+        <button type="button" id="summaryClearFiltersBtn" class="summary-clear-filters-link" onclick="clearAllFilters()" style="background:none; border:none; cursor:pointer; {% if total_active_filters == 0 %}display:none;{% endif %}">
+            Clear filters
+        </button>
 
         <!-- JIRA 2-COLUMN FILTER POPOVER -->
         <div id="summaryFilterPopover" class="jira-filter-popover" style="display:none;" onclick="event.stopPropagation();">
-            <form id="summaryFilterForm" method="GET" action="{% url 'summary' %}">
+            <form id="summaryFilterForm" onsubmit="event.preventDefault(); applyFilters();">
                 <div class="jira-filter-popover-body">
                     <!-- LEFT COLUMN: Categories -->
                     <div class="jira-filter-left-col">
                         <div class="jira-filter-cat-item active" id="cat-assignee" onclick="switchFilterCategory('assignee')">
                             <span>Assignee</span>
-                            {% if assignee_filter_count > 0 %}
-                            <span class="cat-count-badge">{{ assignee_filter_count }}</span>
-                            {% endif %}
+                            <span class="cat-count-badge" id="catBadgeAssignee" style="{% if assignee_filter_count == 0 %}display:none;{% endif %}">{{ assignee_filter_count }}</span>
                         </div>
 
                         <div class="jira-filter-cat-item" id="cat-status" onclick="switchFilterCategory('status')">
                             <span>Status</span>
-                            {% if status_filter_count > 0 %}
-                            <span class="cat-count-badge">{{ status_filter_count }}</span>
-                            {% endif %}
+                            <span class="cat-count-badge" id="catBadgeStatus" style="{% if status_filter_count == 0 %}display:none;{% endif %}">{{ status_filter_count }}</span>
                         </div>
 
                         <div class="jira-filter-left-footer">
-                            <a href="{% url 'summary' %}" class="jira-filter-clear-all-link">Clear all</a>
+                            <button type="button" class="jira-filter-clear-all-link" style="background:none; border:none; cursor:pointer; padding:0;" onclick="clearAllFilters()">Clear all</button>
                         </div>
                     </div>
 
@@ -115,7 +110,7 @@
                             <div class="filter-options-list" id="assigneeListGroup">
                                 <!-- Option: Unassigned -->
                                 <label class="filter-checkbox-row">
-                                    <input type="checkbox" name="assignee" value="unassigned" {% if is_unassigned_selected %}checked{% endif %} onchange="submitFilterForm()">
+                                    <input type="checkbox" name="assignee" value="unassigned" {% if is_unassigned_selected %}checked{% endif %} onchange="applyFilters()">
                                     <div class="filter-opt-avatar generic-avatar">
                                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                                     </div>
@@ -124,7 +119,7 @@
 
                                 <!-- Option: Current user -->
                                 <label class="filter-checkbox-row">
-                                    <input type="checkbox" name="assignee" value="current" {% if is_current_user_selected %}checked{% endif %} onchange="submitFilterForm()">
+                                    <input type="checkbox" name="assignee" value="current" id="assigneeCheckboxCurrent" {% if is_current_user_selected %}checked{% endif %} onchange="applyFilters()">
                                     <div class="filter-opt-avatar generic-avatar" style="background:#0052cc; color:#fff;">
                                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                                     </div>
@@ -134,7 +129,7 @@
                                 <!-- User Members -->
                                 {% for u in users_list %}
                                 <label class="filter-checkbox-row">
-                                    <input type="checkbox" name="assignee" value="{{ u.id }}" {% if u.is_selected %}checked{% endif %} onchange="submitFilterForm()">
+                                    <input type="checkbox" name="assignee" value="{{ u.id }}" {% if u.is_selected %}checked{% endif %} onchange="applyFilters()">
                                     <div class="filter-opt-avatar" style="background:{{ u.avatar_color }}; color:#ffffff;">
                                         {% if u.profile_image %}
                                         <img src="{{ u.profile_image }}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">
@@ -163,7 +158,7 @@
                             <div class="filter-options-list" id="statusListGroup">
                                 {% for st in status_counts %}
                                 <label class="filter-checkbox-row">
-                                    <input type="checkbox" name="status" value="{{ st.id }}" {% if st.is_selected %}checked{% endif %} onchange="submitFilterForm()">
+                                    <input type="checkbox" name="status" value="{{ st.id }}" {% if st.is_selected %}checked{% endif %} onchange="applyFilters()">
                                     <span class="filter-status-dot" style="background: {{ st.color }};"></span>
                                     <span class="filter-opt-label">{{ st.name }}</span>
                                 </label>
@@ -189,7 +184,7 @@
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
             </div>
             <div class="summary-kpi-content">
-                <div class="summary-kpi-title"><strong>{{ completed_last_7_days }}</strong> completed</div>
+                <div id="kpi-completed-title" class="summary-kpi-title"><strong>{{ completed_last_7_days }}</strong> completed</div>
                 <div class="summary-kpi-subtitle">in the last 7 days</div>
             </div>
         </div>
@@ -200,7 +195,7 @@
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
             </div>
             <div class="summary-kpi-content">
-                <div class="summary-kpi-title"><strong>{{ updated_last_7_days }}</strong> updated</div>
+                <div id="kpi-updated-title" class="summary-kpi-title"><strong>{{ updated_last_7_days }}</strong> updated</div>
                 <div class="summary-kpi-subtitle">in the last 7 days</div>
             </div>
         </div>
@@ -211,7 +206,7 @@
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="12" y1="9" x2="12" y2="15"/></svg>
             </div>
             <div class="summary-kpi-content">
-                <div class="summary-kpi-title"><strong>{{ created_last_7_days }}</strong> created</div>
+                <div id="kpi-created-title" class="summary-kpi-title"><strong>{{ created_last_7_days }}</strong> created</div>
                 <div class="summary-kpi-subtitle">in the last 7 days</div>
             </div>
         </div>
@@ -222,7 +217,7 @@
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
             </div>
             <div class="summary-kpi-content">
-                <div class="summary-kpi-title"><strong style="color:var(--jira-text-dark);">{{ due_soon_next_7_days }}</strong> due soon</div>
+                <div id="kpi-due-title" class="summary-kpi-title"><strong style="color:var(--jira-text-dark);">{{ due_soon_next_7_days }}</strong> due soon</div>
                 <div class="summary-kpi-subtitle">in the next 7 days</div>
             </div>
         </div>
@@ -240,8 +235,8 @@
 
             <div class="summary-donut-container">
                 <!-- SVG Donut Chart -->
-                <div class="donut-chart-wrapper">
-                    <svg viewBox="0 0 100 100" class="donut-svg">
+                <div class="donut-chart-wrapper" id="summaryDonutChartWrapper">
+                    <svg viewBox="0 0 100 100" class="donut-svg" id="summaryDonutSvg">
                         <!-- Background Circle Track -->
                         <circle cx="50" cy="50" r="38" class="donut-bg-track" fill="transparent" stroke-width="12"></circle>
                         
@@ -261,13 +256,13 @@
 
                     <!-- Center Label -->
                     <div class="donut-center-label">
-                        <div class="donut-center-count">{{ total_tickets }}</div>
+                        <div class="donut-center-count" id="summaryDonutCenterCount">{{ total_tickets }}</div>
                         <div class="donut-center-text">Total work item...</div>
                     </div>
                 </div>
 
                 <!-- Status Legend List -->
-                <div class="donut-legend-list">
+                <div class="donut-legend-list" id="summaryDonutLegendList">
                     {% for st in status_counts %}
                     <div class="donut-legend-item">
                         <span class="donut-legend-box" style="background: {{ st.color }};"></span>
@@ -293,7 +288,7 @@
 
             <div class="summary-activity-container">
                 <div class="summary-activity-group-title">Today</div>
-                <div class="summary-activity-list">
+                <div class="summary-activity-list" id="summaryActivityList">
                     {% for act in activities %}
                     <div class="summary-activity-item" {% if act.ticket_id %}onclick="openTicketDetailModal({{ act.ticket_id }})" style="cursor:pointer;"{% endif %}>
                         <div class="summary-activity-avatar" style="background: {{ act.avatar_color }};">
@@ -335,7 +330,7 @@
                 <!-- Bar Chart Canvas/DOM -->
                 <div class="barchart-wrapper">
                     <!-- Y Axis Ticks -->
-                    <div class="barchart-y-axis">
+                    <div class="barchart-y-axis" id="summaryBarChartYAxis">
                         {% for y in y_ticks %}
                         <span class="barchart-y-label">{{ y }}</span>
                         {% endfor %}
@@ -349,7 +344,7 @@
                         <div class="barchart-grid-line" style="top:100%;"></div>
 
                         <!-- Columns -->
-                        <div class="barchart-columns-row">
+                        <div class="barchart-columns-row" id="summaryBarChartColumnsRow">
                             {% for p in priority_counts %}
                             <div class="barchart-column-group">
                                 <div class="barchart-bar-track">
@@ -391,7 +386,7 @@
                     <span>Type</span>
                     <span>Distribution</span>
                 </div>
-                <div class="summary-types-body">
+                <div class="summary-types-body" id="summaryTypesBody">
                     {% for t in type_counts %}
                     <div class="summary-type-row">
                         <div class="summary-type-name">
@@ -427,8 +422,411 @@
 
 </div>
 
-<!-- JIRA FILTER JAVASCRIPT LOGIC -->
+<!-- JIRA DASHBOARD & FILTER JAVASCRIPT WITH EXACT SKELETON LOADING STATE -->
 <script>
+let isDashboardFetching = false;
+
+function showDashboardSkeleton() {
+    isDashboardFetching = true;
+
+    // 1. Stat cards: bold number + label line as skeleton blocks (~85-95px wide, 18px high)
+    const kpiCompleted = document.getElementById('kpi-completed-title');
+    if (kpiCompleted) kpiCompleted.innerHTML = '<div class="skeleton" style="width:90px; height:18px; border-radius:4px; margin-bottom:2px;"></div>';
+    
+    const kpiUpdated = document.getElementById('kpi-updated-title');
+    if (kpiUpdated) kpiUpdated.innerHTML = '<div class="skeleton" style="width:85px; height:18px; border-radius:4px; margin-bottom:2px;"></div>';
+
+    const kpiCreated = document.getElementById('kpi-created-title');
+    if (kpiCreated) kpiCreated.innerHTML = '<div class="skeleton" style="width:85px; height:18px; border-radius:4px; margin-bottom:2px;"></div>';
+
+    const kpiDue = document.getElementById('kpi-due-title');
+    if (kpiDue) kpiDue.innerHTML = '<div class="skeleton" style="width:90px; height:18px; border-radius:4px; margin-bottom:2px;"></div>';
+
+    // 2. Status overview card:
+    // Donut chart itself: skeleton circle, no color segments while loading
+    const donutSvg = document.getElementById('summaryDonutSvg');
+    if (donutSvg) {
+        donutSvg.innerHTML = '<circle cx="50" cy="50" r="38" class="donut-bg-track skeleton-donut-track" fill="transparent" stroke-width="12"></circle>';
+        donutSvg.classList.add('donut-svg-skeleton');
+    }
+    // Total count in center of donut
+    const centerCount = document.getElementById('summaryDonutCenterCount');
+    if (centerCount) centerCount.innerHTML = '<div class="skeleton" style="width:36px; height:24px; border-radius:4px; margin:0 auto;"></div>';
+
+    // Donut legend rows: counts & colored dots beside each
+    const legendList = document.getElementById('summaryDonutLegendList');
+    if (legendList) {
+        const statuses = ['Done', 'In Progress', 'In Review', 'To Do'];
+        let legendHtml = '';
+        statuses.forEach(s => {
+            legendHtml += `
+                <div class="donut-legend-item">
+                    <span class="donut-legend-box skeleton" style="border-radius:2px; width:10px; height:10px;"></span>
+                    <span class="donut-legend-label">${s}:</span>
+                    <span class="skeleton" style="width:16px; height:14px; border-radius:3px; display:inline-block;"></span>
+                </div>
+            `;
+        });
+        legendList.innerHTML = legendHtml;
+    }
+
+    // 3. Recent activity card: 4 placeholder rows
+    const actList = document.getElementById('summaryActivityList');
+    if (actList) {
+        let actHtml = '';
+        const lineLengths = [280, 240, 290, 220];
+        lineLengths.forEach(w => {
+            actHtml += `
+                <div class="summary-activity-item" style="pointer-events:none;">
+                    <div class="summary-activity-avatar skeleton skeleton-circle" style="width:22px; height:22px;"></div>
+                    <div class="summary-activity-info">
+                        <div class="skeleton" style="width:${w}px; max-width:85%; height:15px; border-radius:4px; margin-bottom:4px;"></div>
+                        <div class="skeleton" style="width:75px; height:11px; border-radius:3px;"></div>
+                    </div>
+                </div>
+            `;
+        });
+        actList.innerHTML = actHtml;
+    }
+
+    // 4. Priority breakdown card: each bar with neutral placeholder height (40-60%)
+    const barRow = document.getElementById('summaryBarChartColumnsRow');
+    if (barRow) {
+        const prios = [
+            { name: 'Highest', icon: '⏫', color: '#ff5630' },
+            { name: 'High', icon: '🔼', color: '#ff5630' },
+            { name: 'Medium', icon: '🟰', color: '#ff8b00' },
+            { name: 'Low', icon: '🔽', color: '#0052cc' },
+            { name: 'Lowest', icon: '⏬', color: '#0052cc' },
+            { name: 'None', icon: '—', color: 'var(--jira-text-muted)' }
+        ];
+        let barHtml = '';
+        prios.forEach(p => {
+            barHtml += `
+                <div class="barchart-column-group">
+                    <div class="barchart-bar-track">
+                        <div class="barchart-bar-fill skeleton" style="height:50px; width:26px; border-radius:2px 2px 0 0;"></div>
+                    </div>
+                    <div class="barchart-x-label">
+                        <span class="prio-icon" style="color:${p.color};">${p.icon}</span>
+                        <span>${p.name}</span>
+                    </div>
+                </div>
+            `;
+        });
+        barRow.innerHTML = barHtml;
+    }
+
+    // 5. Types of work card: 4 placeholder rows
+    const typesBody = document.getElementById('summaryTypesBody');
+    if (typesBody) {
+        let typesHtml = '';
+        const nameLengths = [65, 80, 50, 70];
+        nameLengths.forEach(w => {
+            typesHtml += `
+                <div class="summary-type-row" style="pointer-events:none;">
+                    <div class="summary-type-name">
+                        <span class="skeleton" style="width:16px; height:16px; border-radius:3px; display:inline-block;"></span>
+                        <span class="skeleton" style="width:${w}px; height:14px; border-radius:3px; display:inline-block;"></span>
+                    </div>
+                    <div class="summary-type-dist">
+                        <span class="skeleton" style="width:28px; height:14px; border-radius:3px; display:inline-block;"></span>
+                        <div class="type-progress-track">
+                            <div class="type-progress-fill skeleton" style="width:100%;"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        typesBody.innerHTML = typesHtml;
+    }
+}
+
+function renderDashboardData(data) {
+    isDashboardFetching = false;
+
+    // 1. Stat cards
+    const kpiCompleted = document.getElementById('kpi-completed-title');
+    if (kpiCompleted) kpiCompleted.innerHTML = `<strong>${data.completed_last_7_days}</strong> completed`;
+
+    const kpiUpdated = document.getElementById('kpi-updated-title');
+    if (kpiUpdated) kpiUpdated.innerHTML = `<strong>${data.updated_last_7_days}</strong> updated`;
+
+    const kpiCreated = document.getElementById('kpi-created-title');
+    if (kpiCreated) kpiCreated.innerHTML = `<strong>${data.created_last_7_days}</strong> created`;
+
+    const kpiDue = document.getElementById('kpi-due-title');
+    if (kpiDue) kpiDue.innerHTML = `<strong style="color:var(--jira-text-dark);">${data.due_soon_next_7_days}</strong> due soon`;
+
+    // 2. Status overview Donut Chart
+    const donutSvg = document.getElementById('summaryDonutSvg');
+    if (donutSvg) {
+        donutSvg.classList.remove('donut-svg-skeleton');
+        let svgContent = '<circle cx="50" cy="50" r="38" class="donut-bg-track" fill="transparent" stroke-width="12"></circle>';
+        if (data.status_counts && data.status_counts.length > 0) {
+            data.status_counts.forEach(st => {
+                if (st.count > 0) {
+                    svgContent += `
+                        <circle cx="50" cy="50" r="38" fill="transparent"
+                                stroke="${st.color}" stroke-width="12"
+                                stroke-dasharray="${st.dasharray}"
+                                stroke-dashoffset="${st.dashoffset}"
+                                class="donut-segment"
+                                data-name="${st.name}"
+                                data-count="${st.count}"></circle>
+                    `;
+                }
+            });
+        }
+        donutSvg.innerHTML = svgContent;
+    }
+
+    const centerCount = document.getElementById('summaryDonutCenterCount');
+    if (centerCount) centerCount.textContent = data.total_tickets;
+
+    const legendList = document.getElementById('summaryDonutLegendList');
+    if (legendList) {
+        let legendHtml = '';
+        if (data.status_counts && data.status_counts.length > 0) {
+            data.status_counts.forEach(st => {
+                legendHtml += `
+                    <div class="donut-legend-item">
+                        <span class="donut-legend-box" style="background: ${st.color};"></span>
+                        <span class="donut-legend-label">${st.name}:</span>
+                        <span class="donut-legend-value">${st.count}</span>
+                    </div>
+                `;
+            });
+        }
+        legendList.innerHTML = legendHtml;
+    }
+
+    // 3. Recent Activity Feed
+    const actList = document.getElementById('summaryActivityList');
+    if (actList) {
+        let actHtml = '';
+        if (data.activities && data.activities.length > 0) {
+            data.activities.forEach(act => {
+                const clickHandler = act.ticket_id ? `onclick="openTicketDetailModal(${act.ticket_id})"` : '';
+                const cursorStyle = act.ticket_id ? 'cursor:pointer;' : '';
+                const avatarInner = act.profile_image 
+                    ? `<img src="${act.profile_image}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`
+                    : act.user_initials;
+
+                actHtml += `
+                    <div class="summary-activity-item" ${clickHandler} style="${cursorStyle}">
+                        <div class="summary-activity-avatar" style="background: ${act.avatar_color};">
+                            ${avatarInner}
+                        </div>
+                        <div class="summary-activity-info">
+                            <div class="summary-activity-text">
+                                <strong class="activity-username">${act.user}</strong>
+                                <span class="activity-action">${act.action_verb}</span>
+                                <span class="activity-ticket-pill">
+                                    <span class="activity-ticket-icon">💵</span>
+                                    <span class="activity-ticket-code">${act.ticket_code}:</span>
+                                    <span class="activity-ticket-subject">${act.ticket_subject.length > 24 ? act.ticket_subject.substring(0,24) + '...' : act.ticket_subject}</span>
+                                </span>
+                                <span class="activity-status-tag">${act.status_name}</span>
+                            </div>
+                            <div class="summary-activity-time">${act.time_ago}</div>
+                        </div>
+                    </div>
+                `;
+            });
+        } else {
+            actHtml = '<div style="font-size:13px; color:var(--jira-text-muted); padding:16px 0; text-align:center;">No activity matching the current filter.</div>';
+        }
+        actList.innerHTML = actHtml;
+    }
+
+    // 4. Priority breakdown Bar Chart
+    const yAxis = document.getElementById('summaryBarChartYAxis');
+    if (yAxis && data.y_ticks) {
+        yAxis.innerHTML = data.y_ticks.map(y => `<span class="barchart-y-label">${y}</span>`).join('');
+    }
+
+    const barRow = document.getElementById('summaryBarChartColumnsRow');
+    if (barRow && data.priority_counts) {
+        const prioIcons = {
+            'Highest': { icon: '⏫', color: '#ff5630' },
+            'High': { icon: '🔼', color: '#ff5630' },
+            'Medium': { icon: '🟰', color: '#ff8b00' },
+            'Low': { icon: '🔽', color: '#0052cc' },
+            'Lowest': { icon: '⏬', color: '#0052cc' },
+            'None': { icon: '—', color: 'var(--jira-text-muted)' }
+        };
+        let barHtml = '';
+        data.priority_counts.forEach(p => {
+            const meta = prioIcons[p.name] || { icon: '—', color: 'var(--jira-text-muted)' };
+            barHtml += `
+                <div class="barchart-column-group">
+                    <div class="barchart-bar-track">
+                        <div class="barchart-bar-fill" style="height: ${p.height_px}px;" title="${p.name}: ${p.count}"></div>
+                    </div>
+                    <div class="barchart-x-label">
+                        <span class="prio-icon" style="color:${meta.color};">${meta.icon}</span>
+                        <span>${p.name}</span>
+                    </div>
+                </div>
+            `;
+        });
+        barRow.innerHTML = barHtml;
+    }
+
+    // 5. Types of work distribution
+    const typesBody = document.getElementById('summaryTypesBody');
+    if (typesBody) {
+        let typesHtml = '';
+        if (data.type_counts && data.type_counts.length > 0) {
+            data.type_counts.forEach(t => {
+                typesHtml += `
+                    <div class="summary-type-row">
+                        <div class="summary-type-name">
+                            <span class="type-icon">${t.icon}</span>
+                            <span class="type-text">${t.name}</span>
+                        </div>
+                        <div class="summary-type-dist">
+                            <span class="type-pct">${t.percent}%</span>
+                            <div class="type-progress-track">
+                                <div class="type-progress-fill" style="width: ${t.percent}%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+        } else {
+            typesHtml = `
+                <div class="summary-type-row">
+                    <div class="summary-type-name">
+                        <span class="type-icon">📗</span>
+                        <span class="type-text">Feature</span>
+                    </div>
+                    <div class="summary-type-dist">
+                        <span class="type-pct">0%</span>
+                        <div class="type-progress-track">
+                            <div class="type-progress-fill" style="width: 0%;"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        typesBody.innerHTML = typesHtml;
+    }
+
+    // Update Filter Badges & Buttons State
+    updateFilterUIBadges(data);
+}
+
+function updateFilterUIBadges(data) {
+    const totalFilters = data.total_active_filters || 0;
+    const filterBtn = document.getElementById('summaryFilterBtn');
+    const filterCountBadge = document.getElementById('filterCountBadge');
+    const clearFiltersBtn = document.getElementById('summaryClearFiltersBtn');
+    const avatarFilterBtn = document.getElementById('summaryAvatarFilterBtn');
+
+    if (totalFilters > 0) {
+        if (filterBtn) filterBtn.classList.add('filter-active');
+        if (filterCountBadge) {
+            filterCountBadge.style.display = 'inline-block';
+            filterCountBadge.textContent = totalFilters;
+        }
+        if (clearFiltersBtn) clearFiltersBtn.style.display = 'inline-block';
+    } else {
+        if (filterBtn) filterBtn.classList.remove('filter-active');
+        if (filterCountBadge) filterCountBadge.style.display = 'none';
+        if (clearFiltersBtn) clearFiltersBtn.style.display = 'none';
+    }
+
+    if (avatarFilterBtn) {
+        if (data.is_current_user_selected) {
+            avatarFilterBtn.classList.add('active-user-filter');
+        } else {
+            avatarFilterBtn.classList.remove('active-user-filter');
+        }
+    }
+
+    const catBadgeAssignee = document.getElementById('catBadgeAssignee');
+    if (catBadgeAssignee) {
+        if (data.assignee_filter_count > 0) {
+            catBadgeAssignee.style.display = 'inline-block';
+            catBadgeAssignee.textContent = data.assignee_filter_count;
+        } else {
+            catBadgeAssignee.style.display = 'none';
+        }
+    }
+
+    const catBadgeStatus = document.getElementById('catBadgeStatus');
+    if (catBadgeStatus) {
+        if (data.status_filter_count > 0) {
+            catBadgeStatus.style.display = 'inline-block';
+            catBadgeStatus.textContent = data.status_filter_count;
+        } else {
+            catBadgeStatus.style.display = 'none';
+        }
+    }
+}
+
+async function fetchDashboardMetrics(pushUrl = true) {
+    showDashboardSkeleton();
+
+    const form = document.getElementById('summaryFilterForm');
+    const formData = new FormData(form);
+    const params = new URLSearchParams();
+
+    for (const [key, val] of formData.entries()) {
+        params.append(key, val);
+    }
+
+    const queryString = params.toString();
+    const apiUrl = '/api/summary/' + (queryString ? '?' + queryString : '');
+    const pageUrl = window.location.pathname + (queryString ? '?' + queryString : '');
+
+    if (pushUrl) {
+        window.history.pushState({}, '', pageUrl);
+    }
+
+    try {
+        const res = await fetch(apiUrl);
+        if (!res.ok) throw new Error('Network error');
+        const data = await res.json();
+        if (data.success) {
+            renderDashboardData(data);
+        } else {
+            console.error('Error fetching metrics:', data.error);
+        }
+    } catch (err) {
+        console.error('Dashboard fetch failed:', err);
+    }
+}
+
+function applyFilters() {
+    fetchDashboardMetrics(true);
+}
+
+function toggleQuickUserFilter() {
+    const currentCb = document.getElementById('assigneeCheckboxCurrent');
+    if (currentCb) {
+        currentCb.checked = !currentCb.checked;
+        applyFilters();
+    }
+}
+
+function clearAllFilters() {
+    const form = document.getElementById('summaryFilterForm');
+    if (form) {
+        form.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+        applyFilters();
+    }
+}
+
+function clearCategoryFilters(cat) {
+    const container = document.getElementById(cat === 'assignee' ? 'assigneeListGroup' : 'statusListGroup');
+    if (!container) return;
+    container.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+    applyFilters();
+}
+
 function toggleSummaryFilterPopover(e) {
     if (e) e.stopPropagation();
     const popover = document.getElementById('summaryFilterPopover');
@@ -482,17 +880,21 @@ function filterChecklist(inputId, listId) {
     }
 }
 
-function submitFilterForm() {
-    const form = document.getElementById('summaryFilterForm');
-    if (form) form.submit();
-}
+// Handle Browser Back / Forward buttons
+window.addEventListener('popstate', function() {
+    // Sync checkboxes with URL search params
+    const params = new URLSearchParams(window.location.search);
+    const assignees = params.getAll('assignee');
+    const statuses = params.getAll('status');
 
-function clearCategoryFilters(cat) {
-    const container = document.getElementById(cat === 'assignee' ? 'assigneeListGroup' : 'statusListGroup');
-    if (!container) return;
-    const checkboxes = container.querySelectorAll('input[type="checkbox"]');
-    checkboxes.forEach(cb => cb.checked = false);
-    submitFilterForm();
-}
+    document.querySelectorAll('#assigneeListGroup input[name="assignee"]').forEach(cb => {
+        cb.checked = assignees.includes(cb.value);
+    });
+    document.querySelectorAll('#statusListGroup input[name="status"]').forEach(cb => {
+        cb.checked = statuses.includes(cb.value);
+    });
+
+    fetchDashboardMetrics(false);
+});
 </script>
 {% endblock %}

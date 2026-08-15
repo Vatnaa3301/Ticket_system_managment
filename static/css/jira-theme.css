@@ -4063,3 +4063,50 @@ textarea.form-control,
     color: #8c9bab;
 }
 
+/* ==================== SUMMARY SKELETON LOADING STATE ==================== */
+.skeleton {
+    background: #e4e6ea;
+    border-radius: 4px;
+    position: relative;
+    overflow: hidden;
+    color: transparent !important;
+    display: inline-block;
+    vertical-align: middle;
+    pointer-events: none;
+    user-select: none;
+}
+[data-theme="dark"] .skeleton {
+    background: #2a2c35;
+}
+.skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.7), transparent);
+    animation: shimmer 1.4s infinite;
+}
+[data-theme="dark"] .skeleton::after {
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.18), transparent);
+}
+@keyframes shimmer {
+    100% { transform: translateX(100%); }
+}
+.skeleton-circle { 
+    border-radius: 50% !important; 
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .skeleton::after { 
+        animation: none; 
+    }
+}
+
+.donut-svg-skeleton circle.skeleton-donut-track {
+    stroke: #e4e6ea;
+}
+[data-theme="dark"] .donut-svg-skeleton circle.skeleton-donut-track {
+    stroke: #2a2c35;
+}
+
+

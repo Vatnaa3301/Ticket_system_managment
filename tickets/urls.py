@@ -17,6 +17,7 @@ urlpatterns = [
     path('teams/', views.teams_view, name='teams'),
 
     # APIs
+    path('api/summary/', views.api_summary_metrics, name='api_summary_metrics'),
     path('api/board/sync/', views.api_board_sync, name='api_board_sync'),
     path('api/tickets/<int:ticket_id>/update-status/', views.api_update_status, name='api_update_status'),
 
