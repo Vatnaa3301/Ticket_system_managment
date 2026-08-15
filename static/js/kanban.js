@@ -1141,7 +1141,26 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 });
 
-                boardChannel.bind('ticket-created', function() {
+                boardChannel.bind('ticket-created', function(data) {
+                    if (data && data.ticket_id && data.status_id) {
+                        let card = document.querySelector(`.ticket-card[data-ticket-id="${data.ticket_id}"]`);
+                        if (!card) {
+                            const targetColumnContainer = document.querySelector(`.column-cards-container[data-status-id="${data.status_id}"]`);
+                            if (targetColumnContainer) {
+                                card = createCardElement(data);
+                                card.style.opacity = '0';
+                                card.style.transform = 'scale(0.9)';
+                                card.style.transition = 'all 0.3s ease';
+                                targetColumnContainer.appendChild(card);
+                                setTimeout(() => {
+                                    card.style.opacity = '1';
+                                    card.style.transform = 'scale(1)';
+                                    setTimeout(() => { card.style.transition = ''; }, 300);
+                                }, 50);
+                                if (window.updateColumnCounts) window.updateColumnCounts();
+                            }
+                        }
+                    }
                     checkBoardSync();
                 });
 

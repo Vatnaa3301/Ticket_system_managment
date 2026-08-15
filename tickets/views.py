@@ -904,15 +904,18 @@ def api_board_sync(request):
     try:
         client_ver = str(request.GET.get('ver', '0')).strip()
 
+        from django.db.models import Max
         latest_ticket = Ticket.objects.order_by('-updated_at').first()
         ticket_count = Ticket.objects.count()
+        max_id = Ticket.objects.aggregate(max_id=Max('ticket_id'))['max_id'] or 0
         if latest_ticket and latest_ticket.updated_at:
-            current_ver = f"{ticket_count}_{int(latest_ticket.updated_at.timestamp() * 1000)}"
+            current_ver = f"{ticket_count}_{max_id}_{int(latest_ticket.updated_at.timestamp() * 1000)}"
         else:
-            current_ver = f"{ticket_count}_0"
+            current_ver = f"{ticket_count}_{max_id}_0"
 
         if client_ver == current_ver:
             return JsonResponse({'updated': False, 'ver': current_ver})
+
 
         tickets = Ticket.objects.select_related('status', 'priority', 'assigned_to', 'assigned_to__profile').all()
         tickets_data = []
@@ -1213,15 +1216,28 @@ def api_create_ticket(request):
         )
         bump_board_version()
 
+        prof = getattr(assigned_to, 'profile', None) if assigned_to else None
         try:
             pusher_client.trigger('board_channel', 'ticket-created', {
                 'ticket_id': ticket.ticket_id,
-                'ticket_code': ticket.ticket_code
+                'ticket_code': ticket.ticket_code,
+                'subject': ticket.subject,
+                'status_id': ticket.status.status_id if ticket.status else None,
+                'status_name': ticket.status.status_name if ticket.status else '',
+                'priority_id': ticket.priority.priority_id if ticket.priority else None,
+                'priority_name': ticket.priority.priority_name if ticket.priority else '',
+                'due_date_formatted': safe_format_date(ticket.due_date, '%d %b %Y'),
+                'is_due_soon': ticket.is_due_soon,
+                'assignee': assigned_to.username if assigned_to else '',
+                'assignee_initials': (assigned_to.username[:2].upper()) if assigned_to else '',
+                'assignee_color': prof.avatar_color if prof else '#0052cc',
+                'assignee_image': prof.profile_image if prof and prof.profile_image else '',
             })
         except Exception:
             pass
 
         return JsonResponse({'success': True, 'ticket_id': ticket.ticket_id, 'ticket_code': ticket.ticket_code})
+
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=400)
 
