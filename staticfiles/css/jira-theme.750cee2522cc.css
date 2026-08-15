@@ -2628,5 +2628,133 @@ body {
     transform: translateY(1px);
 }
 
+/* ==========================================================================
+   THEME POLISH (LIGHT & DARK MODE MODALS, BUTTONS, & FORM INPUTS)
+   ========================================================================== */
+
+.modal-card {
+    background: var(--jira-card-bg) !important;
+    color: var(--jira-text-dark) !important;
+    border: 1px solid var(--jira-border) !important;
+}
+
+.modal-header {
+    background: var(--jira-bg-subtle) !important;
+    border-bottom: 1px solid var(--jira-border) !important;
+    color: var(--jira-text-dark) !important;
+}
+
+.modal-header .modal-title, .modal-header h3, .modal-header h4 {
+    color: var(--jira-text-dark) !important;
+}
+
+.modal-footer {
+    background: var(--jira-bg-subtle) !important;
+    border-top: 1px solid var(--jira-border) !important;
+    color: var(--jira-text-dark) !important;
+}
+
+/* Form Controls & Inputs in Light / Dark mode */
+.form-control, 
+select.form-control, 
+input.form-control, 
+textarea.form-control,
+.comment-editor-textarea {
+    background-color: var(--jira-card-bg) !important;
+    border-color: var(--jira-border) !important;
+    color: var(--jira-text-dark) !important;
+}
+
+[data-theme="light"] .form-control,
+[data-theme="light"] select.form-control,
+[data-theme="light"] input.form-control,
+[data-theme="light"] textarea.form-control,
+[data-theme="light"] .comment-editor-textarea {
+    background-color: #ffffff !important;
+    border-color: #dfe1e6 !important;
+    color: #172b4d !important;
+}
+
+[data-theme="dark"] .form-control,
+[data-theme="dark"] select.form-control,
+[data-theme="dark"] input.form-control,
+[data-theme="dark"] textarea.form-control,
+[data-theme="dark"] .comment-editor-textarea {
+    background-color: #22252a !important;
+    border-color: #282e33 !important;
+    color: #dee4ea !important;
+}
+
+/* Modal Form Labels */
+.form-group label, .modal-body label {
+    color: var(--jira-text-dark) !important;
+}
+
+/* Editor Toolbars & Containers */
+.jira-comment-editor-box, .comment-editor-toolbar {
+    background-color: var(--jira-bg-subtle) !important;
+    border-color: var(--jira-border) !important;
+}
+
+.editor-tb-btn {
+    color: var(--jira-text-muted) !important;
+}
+
+.editor-tb-btn:hover {
+    background: rgba(9, 30, 66, 0.08) !important;
+    color: var(--jira-text-dark) !important;
+}
+
+[data-theme="dark"] .editor-tb-btn:hover {
+    background: rgba(255, 255, 255, 0.08) !important;
+    color: #dee4ea !important;
+}
+
+/* Close & Cancel Buttons */
+.btn-close, .btn-secondary, .btn-cancel {
+    color: var(--jira-text-dark) !important;
+}
+
+.btn-secondary:hover, .btn-cancel:hover {
+    background: rgba(9, 30, 66, 0.08) !important;
+}
+
+[data-theme="dark"] .btn-secondary:hover, [data-theme="dark"] .btn-cancel:hover {
+    background: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Profile Modal inner sections */
+[data-theme="light"] .profile-box-container {
+    background: #f7f8f9 !important;
+    border-color: #dfe1e6 !important;
+}
+
+[data-theme="dark"] .profile-box-container {
+    background: #1c1c20 !important;
+    border-color: #38383e !important;
+}
+
+[data-theme="light"] .profile-color-picker-row {
+    background: #ffffff !important;
+    border-top: 1px solid #dfe1e6 !important;
+}
+
+[data-theme="dark"] .profile-color-picker-row {
+    background: #222226 !important;
+    border-top: 1px solid #38383e !important;
+}
+
+@keyframes fadeInCard {
+    0% {
+        opacity: 0;
+        transform: scale(0.95) translateY(-4px);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+
 
 
