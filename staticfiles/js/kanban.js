@@ -24,13 +24,42 @@ window.openTicketDetailModal = async function(ticketId) {
         
         const assigneeEl = document.getElementById('detailAssignee');
         const assigneeAvatarEl = document.getElementById('detailAssigneeAvatar');
+        const btnAssignToMe = document.getElementById('btnAssignToMe');
+
         if (assigneeEl) {
             assigneeEl.textContent = t.assignee || 'Unassigned';
             assigneeEl.title = t.assignee_email ? `${t.assignee} (${t.assignee_email})` : (t.assignee || 'Unassigned');
         }
+
+        // Only show "Assign to me" if the ticket is NOT already assigned to the current user
+        if (btnAssignToMe) {
+            const isAssignedToMe = (t.assignee_id && t.current_user_id && String(t.assignee_id) === String(t.current_user_id));
+            if (isAssignedToMe || !t.current_user_id) {
+                btnAssignToMe.style.display = 'none';
+            } else {
+                btnAssignToMe.style.display = 'inline';
+                btnAssignToMe.onclick = async (e) => {
+                    e.preventDefault();
+                    try {
+                        const res = await fetch(`/api/tickets/${ticketId}/edit/`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ assigned_to_id: t.current_user_id })
+                        });
+                        const editData = await res.json();
+                        if (editData.success) {
+                            window.openTicketDetailModal(ticketId);
+                        }
+                    } catch (err) {
+                        console.error(err);
+                    }
+                };
+            }
+        }
+
         if (assigneeAvatarEl) {
             if (t.assignee_image) {
-                assigneeAvatarEl.innerHTML = `<img src="${t.assignee_image}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`;
+                assigneeAvatarEl.innerHTML = `<img src="${t.assignee_image}" onerror="this.style.display='none'; this.parentElement.textContent='${t.assignee_initials || 'UN'}'; this.parentElement.style.background='${t.assignee_color || '#0052cc'}';" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`;
                 assigneeAvatarEl.style.background = 'transparent';
                 assigneeAvatarEl.style.overflow = 'hidden';
             } else if (t.assignee_initials) {
@@ -52,7 +81,7 @@ window.openTicketDetailModal = async function(ticketId) {
         }
         if (creatorAvatarEl) {
             if (t.creator_image) {
-                creatorAvatarEl.innerHTML = `<img src="${t.creator_image}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`;
+                creatorAvatarEl.innerHTML = `<img src="${t.creator_image}" onerror="this.style.display='none'; this.parentElement.textContent='${t.creator_initials || 'UN'}'; this.parentElement.style.background='${t.creator_color || '#0052cc'}';" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`;
                 creatorAvatarEl.style.background = 'transparent';
                 creatorAvatarEl.style.overflow = 'hidden';
             } else if (t.creator_initials) {
