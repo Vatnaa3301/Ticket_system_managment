@@ -2,8 +2,9 @@ import json
 import os
 import pusher
 import resend
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 from django.utils import timezone
+from django.utils.timesince import timesince
 from django.shortcuts import render, get_object_or_404, redirect
 
 pusher_client = pusher.Pusher(
@@ -797,26 +798,168 @@ def list_view(request):
 
 @login_required
 def summary_view(request):
+    """Render executive dashboard metrics summary matching exact Jira Summary layout."""
+    now = timezone.now()
+    seven_days_ago = now - timedelta(days=7)
+    today = timezone.localdate()
+    seven_days_later = today + timedelta(days=7)
 
-    """Render executive dashboard metrics summary."""
+    # Top KPI Metrics (Last 7 days / Next 7 days)
     total_tickets = Ticket.objects.count()
-    open_tickets = Ticket.objects.exclude(status__status_name__in=['Done', 'Closed']).count()
-    done_tickets = Ticket.objects.filter(status__status_name='Done').count()
+    completed_last_7_days = Ticket.objects.filter(status__status_name__iexact='done', updated_at__gte=seven_days_ago).count()
+    updated_last_7_days = Ticket.objects.filter(updated_at__gte=seven_days_ago).count()
+    created_last_7_days = Ticket.objects.filter(created_at__gte=seven_days_ago).count()
+    due_soon_next_7_days = Ticket.objects.exclude(status__status_name__in=['Done', 'Closed']).filter(
+        due_date__gte=today,
+        due_date__lte=seven_days_later
+    ).count()
 
-    tickets_by_status = TicketStatus.objects.annotate(ticket_count=Count('tickets'))
-    tickets_by_priority = Priority.objects.annotate(ticket_count=Count('tickets'))
-    tickets_by_category = TicketCategory.objects.annotate(ticket_count=Count('tickets'))
+    # Status Overview
+    statuses = TicketStatus.objects.all().order_by('position', 'status_id')
+    status_counts = []
+    # Jira exact status colors
+    status_colors = {
+        'done': '#0065ff',        # Blue in Jira summary donut
+        'in progress': '#22a06b', # Green in Jira summary donut
+        'in review': '#998dd9',   # Purple in Jira summary donut
+        'to do': '#ff8b00',       # Orange in Jira summary donut
+    }
+    
+    total_status_sum = 0
+    for st in statuses:
+        c = Ticket.objects.filter(status=st).count()
+        total_status_sum += c
+        s_name_lower = st.status_name.lower().strip()
+        color = status_colors.get(s_name_lower, '#6b7280')
+        status_counts.append({
+            'id': st.status_id,
+            'name': st.status_name,
+            'count': c,
+            'color': color,
+        })
 
-    recent_activities = TicketLog.objects.select_related('ticket', 'user').order_by('-created_at')[:10]
+    # Calculate stroke dasharray / offsets for SVG Donut chart
+    # Circumference for r=38 is 2 * PI * 38 ≈ 238.76
+    circumference = 238.76
+    accumulated_offset = 0
+    for item in status_counts:
+        item_pct = (item['count'] / total_status_sum) if total_status_sum > 0 else 0
+        dash_len = round(item_pct * circumference, 2)
+        item['dasharray'] = f"{dash_len} {circumference}"
+        item['dashoffset'] = round(-accumulated_offset, 2)
+        accumulated_offset += dash_len
+
+    # Priority Breakdown (Highest, High, Medium, Low, Lowest, None)
+    priority_order = ['Highest', 'High', 'Medium', 'Low', 'Lowest']
+    priority_counts = []
+    max_prio_count = 1
+    for p_name in priority_order:
+        p_obj = Priority.objects.filter(priority_name__iexact=p_name).first()
+        c = Ticket.objects.filter(priority=p_obj).count() if p_obj else 0
+        if c > max_prio_count:
+            max_prio_count = c
+        priority_counts.append({
+            'name': p_name,
+            'count': c,
+        })
+    none_prio_count = Ticket.objects.filter(priority__isnull=True).count()
+    if none_prio_count > max_prio_count:
+        max_prio_count = none_prio_count
+    priority_counts.append({
+        'name': 'None',
+        'count': none_prio_count,
+    })
+
+    # Calculate percentage bar heights for the priority chart (max height = 100px)
+    for p in priority_counts:
+        p['height_px'] = max(int((p['count'] / max_prio_count) * 100), 2) if p['count'] > 0 else 0
+
+    # Types of Work (Category Distribution)
+    categories = TicketCategory.objects.all()
+    type_counts = []
+    cat_icons = {
+        'feature': '📗',
+        'subtask': '🔷',
+        'task': '☑️',
+        'epic': '⚡',
+        'bug': '🐞',
+        'technical': '⚙️',
+        'design': '🎨',
+    }
+    for cat in categories:
+        c = Ticket.objects.filter(category=cat).count()
+        pct = round((c / total_tickets * 100)) if total_tickets > 0 else 0
+        cat_lower = cat.category_name.lower().strip()
+        icon = cat_icons.get(cat_lower, '📋')
+        type_counts.append({
+            'name': cat.category_name,
+            'icon': icon,
+            'count': c,
+            'percent': pct
+        })
+    type_counts.sort(key=lambda x: x['count'], reverse=True)
+
+    # Recent Activity
+    recent_logs = TicketLog.objects.select_related('ticket', 'ticket__status', 'ticket__priority', 'ticket__category', 'user').order_by('-created_at')[:15]
+    activities = []
+    for l in recent_logs:
+        u = l.user
+        prof = getattr(u, 'profile', None) if u else None
+        disp_name = prof.full_name.strip() if prof and prof.full_name else (u.username if u else 'System')
+        parts = disp_name.split()
+        initials = (parts[0][0] + parts[-1][0]).upper() if len(parts) >= 2 else (disp_name[:2]).upper()
+        avatar_color = prof.avatar_color if prof and prof.avatar_color else '#0052cc'
+        profile_image = prof.profile_image if prof and prof.profile_image else ''
+
+        action_verb = 'updated'
+        if l.action_type == 'Create':
+            action_verb = 'created'
+        elif l.action_type == 'Status':
+            action_verb = 'changed status of'
+        elif l.action_type == 'Comment':
+            action_verb = 'commented on'
+
+        time_diff = (now - l.created_at).total_seconds()
+        if time_diff < 60:
+            time_ago = 'less than a minute ago'
+        else:
+            time_ago = timesince(l.created_at) + ' ago'
+
+        activities.append({
+            'id': l.log_id,
+            'user': disp_name,
+            'user_initials': initials,
+            'avatar_color': avatar_color,
+            'profile_image': profile_image,
+            'action_verb': action_verb,
+            'ticket_code': l.ticket.ticket_code if l.ticket else 'KAN',
+            'ticket_subject': l.ticket.subject if l.ticket else '',
+            'ticket_id': l.ticket.ticket_id if l.ticket else None,
+            'status_name': l.ticket.status.status_name if l.ticket and l.ticket.status else 'To Do',
+            'created_at': l.created_at,
+            'time_ago': time_ago
+        })
+
+    # Y-axis ticks for priority bar chart
+    y_ticks = [
+        max_prio_count,
+        round(max_prio_count * 0.75, 1) if max_prio_count > 1 else 0.7,
+        round(max_prio_count * 0.5, 1) if max_prio_count > 1 else 0.5,
+        0
+    ]
 
     context = {
         'total_tickets': total_tickets,
-        'open_tickets': open_tickets,
-        'done_tickets': done_tickets,
-        'tickets_by_status': tickets_by_status,
-        'tickets_by_priority': tickets_by_priority,
-        'tickets_by_category': tickets_by_category,
-        'recent_activities': recent_activities,
+        'completed_last_7_days': completed_last_7_days,
+        'updated_last_7_days': updated_last_7_days,
+        'created_last_7_days': created_last_7_days,
+        'due_soon_next_7_days': due_soon_next_7_days,
+        'status_counts': status_counts,
+        'priority_counts': priority_counts,
+        'type_counts': type_counts,
+        'activities': activities,
+        'max_prio_count': max_prio_count,
+        'y_ticks': y_ticks,
         'active_view': 'summary',
     }
     return render(request, 'tickets/summary.html', context)

@@ -3,92 +3,329 @@
 {% block title %}Summary - Team Vatana Jira{% endblock %}
 
 {% block content %}
-<!-- SPACE BANNER & TITLE -->
-<div class="space-banner">
-    <div class="space-meta">Spaces</div>
-    <div class="space-title-row">
-        <div class="space-avatar-icon">TV</div>
-        <h1 class="space-name">Team Vatana</h1>
-        <span style="font-size:12px; color:var(--jira-text-muted); display:inline-flex; align-items:center;" title="Team Space"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+<!-- SPACE BANNER & TITLE (EXACT JIRA UI) -->
+<div class="space-banner" style="border-bottom: 1px solid var(--jira-border); background: var(--jira-bg-main); padding-bottom: 0;">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; padding: 16px 24px 8px 24px;">
+        <div>
+            <div class="space-meta" style="font-size:12px; color:var(--jira-text-muted); margin-bottom:4px;">Spaces</div>
+            <div class="space-title-row" style="display:flex; align-items:center; gap:10px;">
+                <div class="space-avatar-icon" style="width:28px; height:28px; background:#0052cc; color:#fff; border-radius:4px; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:12px;">TV</div>
+                <h1 class="space-name" style="font-size:20px; font-weight:700; color:var(--jira-text-dark); margin:0;">Team Vatana</h1>
+                <span style="font-size:12px; color:var(--jira-text-muted); display:inline-flex; align-items:center; cursor:pointer;" title="Team Space">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                </span>
+                <button class="icon-btn" style="background:none; border:none; color:var(--jira-text-muted); cursor:pointer; font-size:14px;" title="More space options">•••</button>
+            </div>
+        </div>
+
+        <!-- TOP RIGHT UTILITY BUTTONS -->
+        <div style="display:flex; align-items:center; gap:6px; margin-top:6px;">
+            <button class="summary-top-action-btn" title="Share Space">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+            </button>
+            <button class="summary-top-action-btn" title="Automations">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            </button>
+            <button class="summary-top-action-btn" title="Space Settings">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+            </button>
+            <button class="summary-top-action-btn" title="Split view">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
+            </button>
+        </div>
     </div>
 
-    <!-- TABS BAR - ONLY SUMMARY, LIST, BOARD -->
-    <div class="tab-bar">
-        <a href="{% url 'summary' %}" class="tab-item {% if active_view == 'summary' %}active{% endif %}">
-            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+    <!-- TABS BAR (EXACT JIRA UI) -->
+    <div class="tab-bar" style="padding: 0 24px; margin-top: 4px; display:flex; gap:16px; border-bottom:none;">
+        <a href="{% url 'summary' %}" class="tab-item active" style="padding: 10px 4px; font-size:13px; font-weight:600; text-decoration:none; display:inline-flex; align-items:center; gap:6px; color:var(--jira-blue); border-bottom: 2px solid var(--jira-blue);">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
             Summary
         </a>
-        <a href="{% url 'list' %}" class="tab-item {% if active_view == 'list' %}active{% endif %}">
+        <a href="{% url 'list' %}" class="tab-item" style="padding: 10px 4px; font-size:13px; font-weight:500; text-decoration:none; display:inline-flex; align-items:center; gap:6px; color:var(--jira-text-muted); border-bottom: 2px solid transparent;">
             <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
             List
         </a>
-        <a href="{% url 'board' %}" class="tab-item {% if active_view == 'board' %}active{% endif %}">
+        <a href="{% url 'board' %}" class="tab-item" style="padding: 10px 4px; font-size:13px; font-weight:500; text-decoration:none; display:inline-flex; align-items:center; gap:6px; color:var(--jira-text-muted); border-bottom: 2px solid transparent;">
             <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2m0 10V7m6 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/></svg>
             Board
         </a>
+        <span class="tab-item" style="padding: 10px 4px; font-size:13px; font-weight:500; color:var(--jira-text-muted); opacity:0.6; display:inline-flex; align-items:center; gap:6px; cursor:default;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            Calendar
+        </span>
+        <span class="tab-item" style="padding: 10px 4px; font-size:13px; font-weight:500; color:var(--jira-text-muted); opacity:0.6; display:inline-flex; align-items:center; gap:6px; cursor:default;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="6" y1="18" x2="18" y2="18"/></svg>
+            Timeline
+        </span>
+        <span class="tab-item" style="padding: 10px 4px; font-size:13px; font-weight:500; color:var(--jira-text-muted); opacity:0.6; display:inline-flex; align-items:center; gap:6px; cursor:default;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            Docs
+        </span>
+        <span class="tab-item" style="padding: 10px 4px; font-size:13px; font-weight:500; color:var(--jira-text-muted); opacity:0.6; display:inline-flex; align-items:center; gap:6px; cursor:default;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+            Forms
+        </span>
+        <span class="tab-item" style="padding: 10px 4px; font-size:14px; font-weight:600; color:var(--jira-text-muted); cursor:pointer;" title="Add tab">+</span>
     </div>
 </div>
 
-<div style="padding: 24px; overflow-y: auto; flex: 1; display:flex; flex-direction:column; gap:20px;">
-    <!-- METRIC CARDS -->
-    <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:16px;">
-        <div style="background:var(--jira-card-bg); border:1px solid var(--jira-border); border-radius:6px; padding:20px;">
-            <div style="font-size:12px; font-weight:700; color:var(--jira-text-muted); text-transform:uppercase;">Total Tickets</div>
-            <div style="font-size:32px; font-weight:800; color:var(--jira-blue); margin-top:8px;">{{ total_tickets }}</div>
+<!-- SUMMARY CONTENT CONTAINER -->
+<div class="summary-page-container" style="padding: 20px 24px; overflow-y: auto; flex: 1; display:flex; flex-direction:column; gap:20px; background:var(--jira-bg-subtle, #f4f5f7);">
+
+    <!-- FILTER BAR ROW -->
+    <div style="display:flex; align-items:center; gap:10px;">
+        <div style="width:28px; height:28px; border-radius:50%; background:#0052cc; color:#ffffff; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; border:2px solid var(--jira-card-bg); cursor:pointer;" title="{{ request.user.username }}">
+            {{ request.user.profile.full_name|default:request.user.username|slice:":2"|upper }}
         </div>
-        <div style="background:var(--jira-card-bg); border:1px solid var(--jira-border); border-radius:6px; padding:20px;">
-            <div style="font-size:12px; font-weight:700; color:var(--jira-text-muted); text-transform:uppercase;">Open Tickets</div>
-            <div style="font-size:32px; font-weight:800; color:#d97706; margin-top:8px;">{{ open_tickets }}</div>
+        <button class="summary-filter-pill">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+            <span>Filter</span>
+        </button>
+    </div>
+
+    <!-- 4 TOP METRIC CARDS (EXACT JIRA LAYOUT) -->
+    <div class="summary-kpi-grid">
+        <!-- 1: Completed -->
+        <div class="summary-kpi-card">
+            <div class="summary-kpi-icon-box">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            </div>
+            <div class="summary-kpi-content">
+                <div class="summary-kpi-title"><strong>{{ completed_last_7_days }}</strong> completed</div>
+                <div class="summary-kpi-subtitle">in the last 7 days</div>
+            </div>
         </div>
-        <div style="background:var(--jira-card-bg); border:1px solid var(--jira-border); border-radius:6px; padding:20px;">
-            <div style="font-size:12px; font-weight:700; color:var(--jira-text-muted); text-transform:uppercase;">Resolved / Done</div>
-            <div style="font-size:32px; font-weight:800; color:#16a34a; margin-top:8px;">{{ done_tickets }}</div>
+
+        <!-- 2: Updated -->
+        <div class="summary-kpi-card">
+            <div class="summary-kpi-icon-box">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            </div>
+            <div class="summary-kpi-content">
+                <div class="summary-kpi-title"><strong>{{ updated_last_7_days }}</strong> updated</div>
+                <div class="summary-kpi-subtitle">in the last 7 days</div>
+            </div>
+        </div>
+
+        <!-- 3: Created -->
+        <div class="summary-kpi-card">
+            <div class="summary-kpi-icon-box">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="12" y1="9" x2="12" y2="15"/></svg>
+            </div>
+            <div class="summary-kpi-content">
+                <div class="summary-kpi-title"><strong>{{ created_last_7_days }}</strong> created</div>
+                <div class="summary-kpi-subtitle">in the last 7 days</div>
+            </div>
+        </div>
+
+        <!-- 4: Due soon -->
+        <div class="summary-kpi-card">
+            <div class="summary-kpi-icon-box" style="color:#e2b203;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            </div>
+            <div class="summary-kpi-content">
+                <div class="summary-kpi-title"><strong style="color:var(--jira-text-dark);">{{ due_soon_next_7_days }}</strong> due soon</div>
+                <div class="summary-kpi-subtitle">in the next 7 days</div>
+            </div>
         </div>
     </div>
 
-    <!-- BREAKDOWN GRID -->
-    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
-        <!-- Status Breakdown -->
-        <div style="background:var(--jira-card-bg); border:1px solid var(--jira-border); border-radius:6px; padding:16px;">
-            <h3 style="font-size:15px; font-weight:700; margin-bottom:12px; color:var(--jira-text-dark);">Tickets by Status</h3>
-            <ul style="list-style:none; display:flex; flex-direction:column; gap:8px;">
-                {% for st in tickets_by_status %}
-                <li style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--jira-border); font-size:13px; color:var(--jira-text-dark);">
-                    <span>{{ st.status_name }}</span>
-                    <span style="font-weight:700;">{{ st.ticket_count }}</span>
-                </li>
-                {% endfor %}
-            </ul>
+    <!-- MAIN 2x2 ANALYTICS DASHBOARD GRID -->
+    <div class="summary-dashboard-grid">
+
+        <!-- 1. STATUS OVERVIEW (DONUT CHART) -->
+        <div class="summary-card">
+            <div class="summary-card-header">
+                <h3 class="summary-card-title">Status overview</h3>
+                <p class="summary-card-desc">Get a snapshot of the status of your work items. <a href="{% url 'list' %}" class="summary-blue-link">View all work items</a></p>
+            </div>
+
+            <div class="summary-donut-container">
+                <!-- SVG Donut Chart -->
+                <div class="donut-chart-wrapper">
+                    <svg viewBox="0 0 100 100" class="donut-svg">
+                        <!-- Background Circle Track -->
+                        <circle cx="50" cy="50" r="38" class="donut-bg-track" fill="transparent" stroke-width="12"></circle>
+                        
+                        <!-- Segments -->
+                        {% for st in status_counts %}
+                        {% if st.count > 0 %}
+                        <circle cx="50" cy="50" r="38" fill="transparent"
+                                stroke="{{ st.color }}" stroke-width="12"
+                                stroke-dasharray="{{ st.dasharray }}"
+                                stroke-dashoffset="{{ st.dashoffset }}"
+                                class="donut-segment"
+                                data-name="{{ st.name }}"
+                                data-count="{{ st.count }}"></circle>
+                        {% endif %}
+                        {% endfor %}
+                    </svg>
+
+                    <!-- Center Label -->
+                    <div class="donut-center-label">
+                        <div class="donut-center-count">{{ total_tickets }}</div>
+                        <div class="donut-center-text">Total work item...</div>
+                    </div>
+                </div>
+
+                <!-- Status Legend List -->
+                <div class="donut-legend-list">
+                    {% for st in status_counts %}
+                    <div class="donut-legend-item">
+                        <span class="donut-legend-box" style="background: {{ st.color }};"></span>
+                        <span class="donut-legend-label">{{ st.name }}:</span>
+                        <span class="donut-legend-value">{{ st.count }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
         </div>
 
-        <!-- Priority Breakdown -->
-        <div style="background:var(--jira-card-bg); border:1px solid var(--jira-border); border-radius:6px; padding:16px;">
-            <h3 style="font-size:15px; font-weight:700; margin-bottom:12px; color:var(--jira-text-dark);">Tickets by Priority</h3>
-            <ul style="list-style:none; display:flex; flex-direction:column; gap:8px;">
-                {% for prio in tickets_by_priority %}
-                <li style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--jira-border); font-size:13px; color:var(--jira-text-dark);">
-                    <span class="ticket-badge prio-{{ prio.priority_name|lower }}">{{ prio.priority_name }}</span>
-                    <span style="font-weight:700;">{{ prio.ticket_count }}</span>
-                </li>
-                {% endfor %}
-            </ul>
+        <!-- 2. RECENT ACTIVITY (FEED) -->
+        <div class="summary-card">
+            <div class="summary-card-header" style="display:flex; justify-content:space-between; align-items:flex-start;">
+                <div>
+                    <h3 class="summary-card-title">Recent activity</h3>
+                    <p class="summary-card-desc">Stay up to date with what's happening across the space.</p>
+                </div>
+                <button class="icon-btn summary-expand-btn" title="Expand activity" onclick="window.location.href='{% url \'list\' %}'">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+                </button>
+            </div>
+
+            <div class="summary-activity-container">
+                <div class="summary-activity-group-title">Today</div>
+                <div class="summary-activity-list">
+                    {% for act in activities %}
+                    <div class="summary-activity-item" {% if act.ticket_id %}onclick="openTicketDetailModal({{ act.ticket_id }})" style="cursor:pointer;"{% endif %}>
+                        <div class="summary-activity-avatar" style="background: {{ act.avatar_color }};">
+                            {% if act.profile_image %}
+                            <img src="{{ act.profile_image }}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">
+                            {% else %}
+                            {{ act.user_initials }}
+                            {% endif %}
+                        </div>
+                        <div class="summary-activity-info">
+                            <div class="summary-activity-text">
+                                <strong class="activity-username">{{ act.user }}</strong>
+                                <span class="activity-action">{{ act.action_verb }}</span>
+                                <span class="activity-ticket-pill">
+                                    <span class="activity-ticket-icon">💵</span>
+                                    <span class="activity-ticket-code">{{ act.ticket_code }}:</span>
+                                    <span class="activity-ticket-subject">{{ act.ticket_subject|truncatechars:24 }}</span>
+                                </span>
+                                <span class="activity-status-tag">{{ act.status_name }}</span>
+                            </div>
+                            <div class="summary-activity-time">{{ act.time_ago }}</div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div style="font-size:13px; color:var(--jira-text-muted); padding:16px 0; text-align:center;">No activity recorded in this space yet.</div>
+                    {% endfor %}
+                </div>
+            </div>
         </div>
+
+        <!-- 3. PRIORITY BREAKDOWN (BAR CHART) -->
+        <div class="summary-card">
+            <div class="summary-card-header">
+                <h3 class="summary-card-title">Priority breakdown</h3>
+                <p class="summary-card-desc">Get a holistic view of how work is being prioritized. <a href="#" class="summary-blue-link" onclick="event.preventDefault();">How to manage priorities for spaces</a></p>
+            </div>
+
+            <div class="summary-barchart-container">
+                <!-- Bar Chart Canvas/DOM -->
+                <div class="barchart-wrapper">
+                    <!-- Y Axis Ticks -->
+                    <div class="barchart-y-axis">
+                        {% for y in y_ticks %}
+                        <span class="barchart-y-label">{{ y }}</span>
+                        {% endfor %}
+                    </div>
+
+                    <!-- Bars Area with Grid Lines -->
+                    <div class="barchart-grid-area">
+                        <div class="barchart-grid-line" style="top:0%;"></div>
+                        <div class="barchart-grid-line" style="top:33%;"></div>
+                        <div class="barchart-grid-line" style="top:66%;"></div>
+                        <div class="barchart-grid-line" style="top:100%;"></div>
+
+                        <!-- Columns -->
+                        <div class="barchart-columns-row">
+                            {% for p in priority_counts %}
+                            <div class="barchart-column-group">
+                                <div class="barchart-bar-track">
+                                    <div class="barchart-bar-fill" style="height: {{ p.height_px }}px;" title="{{ p.name }}: {{ p.count }}"></div>
+                                </div>
+                                <div class="barchart-x-label">
+                                    {% if p.name == 'Highest' %}
+                                    <span class="prio-icon" style="color:#ff5630;">⏫</span>
+                                    {% elif p.name == 'High' %}
+                                    <span class="prio-icon" style="color:#ff5630;">🔼</span>
+                                    {% elif p.name == 'Medium' %}
+                                    <span class="prio-icon" style="color:#ff8b00;">🟰</span>
+                                    {% elif p.name == 'Low' %}
+                                    <span class="prio-icon" style="color:#0052cc;">🔽</span>
+                                    {% elif p.name == 'Lowest' %}
+                                    <span class="prio-icon" style="color:#0052cc;">⏬</span>
+                                    {% else %}
+                                    <span class="prio-icon" style="color:var(--jira-text-muted);">—</span>
+                                    {% endif %}
+                                    <span>{{ p.name }}</span>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. TYPES OF WORK (PROGRESS BARS) -->
+        <div class="summary-card">
+            <div class="summary-card-header">
+                <h3 class="summary-card-title">Types of work</h3>
+                <p class="summary-card-desc">Get a breakdown of work items by their types. <a href="{% url 'list' %}" class="summary-blue-link">View all items</a></p>
+            </div>
+
+            <div class="summary-types-table">
+                <div class="summary-types-header">
+                    <span>Type</span>
+                    <span>Distribution</span>
+                </div>
+                <div class="summary-types-body">
+                    {% for t in type_counts %}
+                    <div class="summary-type-row">
+                        <div class="summary-type-name">
+                            <span class="type-icon">{{ t.icon }}</span>
+                            <span class="type-text">{{ t.name }}</span>
+                        </div>
+                        <div class="summary-type-dist">
+                            <span class="type-pct">{{ t.percent }}%</span>
+                            <div class="type-progress-track">
+                                <div class="type-progress-fill" style="width: {{ t.percent }}%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="summary-type-row">
+                        <div class="summary-type-name">
+                            <span class="type-icon">📗</span>
+                            <span class="type-text">Feature</span>
+                        </div>
+                        <div class="summary-type-dist">
+                            <span class="type-pct">0%</span>
+                            <div class="type-progress-track">
+                                <div class="type-progress-fill" style="width: 0%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
     </div>
 
-    <!-- RECENT ACTIVITY LOG -->
-    <div style="background:var(--jira-card-bg); border:1px solid var(--jira-border); border-radius:6px; padding:16px;">
-        <h3 style="font-size:15px; font-weight:700; margin-bottom:12px; color:var(--jira-text-dark);">Recent Audit Activity Log</h3>
-        <ul style="list-style:none; display:flex; flex-direction:column; gap:8px;">
-            {% for act in recent_activities %}
-            <li style="font-size:13px; color:var(--jira-text-dark); border-bottom:1px solid var(--jira-border); padding:6px 0;">
-                <strong>{{ act.user.username }}</strong> performed <strong>{{ act.action_type }}</strong> on 
-                <span style="color:var(--jira-blue); font-weight:600;">{{ act.ticket.ticket_code }}</span> 
-                <span style="color:var(--jira-text-muted); font-size:11px; float:right;">{{ act.created_at|date:"d M Y, H:i" }}</span>
-            </li>
-            {% empty %}
-            <li style="font-size:13px; color:var(--jira-text-muted);">No activity recorded yet.</li>
-            {% endfor %}
-        </ul>
-    </div>
 </div>
 {% endblock %}
