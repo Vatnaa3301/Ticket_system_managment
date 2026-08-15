@@ -2993,7 +2993,7 @@ textarea.form-control,
 .skeleton-shimmer {
     position: relative !important;
     overflow: hidden !important;
-    background-color: #e4e6eb !important;
+    background-color: #e2e5e9 !important;
     border-radius: 6px !important;
     display: inline-block !important;
     color: transparent !important;
@@ -3001,48 +3001,49 @@ textarea.form-control,
     pointer-events: none !important;
     border: none !important;
     vertical-align: middle !important;
+    min-height: 12px;
 }
 
 [data-theme="dark"] .skeleton-shimmer {
-    background-color: #2b2b2f !important;
+    background-color: #2a2b30 !important;
 }
 
 .skeleton-shimmer::after {
     content: "" !important;
     position: absolute !important;
     top: 0 !important;
-    right: 0 !important;
-    bottom: 0 !important;
-    left: 0 !important;
-    transform: translateX(-100%) !important;
-    background-image: linear-gradient(
+    left: -150% !important;
+    width: 150% !important;
+    height: 100% !important;
+    background: linear-gradient(
         90deg,
         rgba(255, 255, 255, 0) 0%,
-        rgba(255, 255, 255, 0.4) 30%,
-        rgba(255, 255, 255, 0.7) 50%,
-        rgba(255, 255, 255, 0.4) 70%,
+        rgba(255, 255, 255, 0.5) 40%,
+        rgba(255, 255, 255, 0.85) 50%,
+        rgba(255, 255, 255, 0.5) 60%,
         rgba(255, 255, 255, 0) 100%
     ) !important;
-    animation: fbSkeletonShimmer 1.4s infinite cubic-bezier(0.4, 0, 0.2, 1) !important;
+    animation: fbSkeletonShimmer 1.2s infinite cubic-bezier(0.25, 0.1, 0.25, 1) !important;
+    will-change: transform !important;
 }
 
 [data-theme="dark"] .skeleton-shimmer::after {
-    background-image: linear-gradient(
+    background: linear-gradient(
         90deg,
         rgba(255, 255, 255, 0) 0%,
-        rgba(255, 255, 255, 0.05) 30%,
-        rgba(255, 255, 255, 0.12) 50%,
-        rgba(255, 255, 255, 0.05) 70%,
+        rgba(255, 255, 255, 0.08) 40%,
+        rgba(255, 255, 255, 0.22) 50%,
+        rgba(255, 255, 255, 0.08) 60%,
         rgba(255, 255, 255, 0) 100%
     ) !important;
 }
 
 @keyframes fbSkeletonShimmer {
     0% {
-        transform: translateX(-100%) !important;
+        transform: translateX(0%) !important;
     }
     100% {
-        transform: translateX(100%) !important;
+        transform: translateX(200%) !important;
     }
 }
 
