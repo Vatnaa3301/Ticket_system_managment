@@ -84,8 +84,6 @@
                 <div class="jira-filter-popover-body">
                     <!-- LEFT COLUMN: Categories -->
                     <div class="jira-filter-left-col">
-                        <div class="jira-filter-cat-item disabled-cat">Parent</div>
-                        
                         <div class="jira-filter-cat-item active" id="cat-assignee" onclick="switchFilterCategory('assignee')">
                             <span>Assignee</span>
                             {% if assignee_filter_count > 0 %}
@@ -98,13 +96,6 @@
                             {% if status_filter_count > 0 %}
                             <span class="cat-count-badge">{{ status_filter_count }}</span>
                             {% endif %}
-                        </div>
-
-                        <div class="jira-filter-cat-item disabled-cat">Work type</div>
-                        <div class="jira-filter-cat-item disabled-cat">Labels</div>
-
-                        <div class="jira-filter-add-field">
-                            <span>+ Add field</span>
                         </div>
 
                         <div class="jira-filter-left-footer">
