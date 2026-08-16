@@ -1213,6 +1213,9 @@ def teams_view(request):
         parts = display_name.split()
         initials = (parts[0][0] + parts[-1][0]).upper() if len(parts) >= 2 else display_name[:2].upper()
 
+        raw_dept = (profile.department if profile and profile.department else (profile.job_title if profile and profile.job_title else 'Software Team'))
+        clean_dept = 'Software Team' if ('enginor' in str(raw_dept).lower()) else (raw_dept or 'Software Team')
+
         members_data.append({
             'id': u.id,
             'username': u.username,
@@ -1222,7 +1225,7 @@ def teams_view(request):
             'avatar_color': profile.avatar_color if profile and profile.avatar_color else '#0052cc',
             'profile_image': profile.profile_image if profile and profile.profile_image else '',
             'role': role_name,
-            'department': (profile.job_title if profile and profile.job_title else (profile.department if profile and profile.department else 'Software Team')),
+            'department': clean_dept,
             'status': profile.status if profile else 'Active',
             'date_joined': u.date_joined.strftime('%b %d, %Y'),
             'is_self': (u.id == request.user.id)
