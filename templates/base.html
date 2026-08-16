@@ -657,48 +657,67 @@
         <div id="priorityPickerList"></div>
     </div>
 
-    <!-- ADD PEOPLE TO TEAM VATANA MODAL (MATCHING JIRA SCREENSHOT) -->
-    <div class="modal-overlay" id="addUserModal" style="display:none; z-index:999999;">
-        <div class="modal-card" style="max-width: 480px; padding: 24px;">
-            <div class="modal-header" style="border-bottom:none; padding-bottom:0; margin-bottom:18px;">
-                <h3 class="modal-title" style="font-size:18px; font-weight:600; color:var(--jira-text-dark);">Add people to <span class="global-team-name-text">{{ team_name }}</span></h3>
-                <button type="button" class="btn-close btn-close-user-modal" style="background:none; border:none; color:var(--jira-text-muted); font-size:20px; cursor:pointer;">&times;</button>
+    <!-- ADD PEOPLE TO TEAM MODAL (ADMIN USER REGISTRATION) -->
+    <div class="modal-overlay" id="addUserModal" style="display:none; z-index:9999999;" onclick="if(event.target===this) closeAddUserModal();">
+        <div class="modal-card" style="max-width: 500px; width: 95vw; padding: 24px; border-radius: 10px; background: var(--jira-card-bg); border: 1px solid var(--jira-border); box-shadow: 0 16px 48px rgba(0,0,0,0.5);">
+            <div class="modal-header" style="border-bottom:none; padding:0 0 16px 0; display:flex; align-items:center; justify-content:space-between;">
+                <div>
+                    <h3 class="modal-title" style="font-size:18px; font-weight:700; color:var(--jira-text-dark); margin:0;">Add people to <span class="global-team-name-text">{{ team_name }}</span></h3>
+                    <p style="font-size:12px; color:var(--jira-text-muted); margin:4px 0 0 0;">Register new member account with login email & password</p>
+                </div>
+                <button type="button" class="btn-close btn-close-user-modal" onclick="closeAddUserModal()" style="background:none; border:none; color:var(--jira-text-muted); font-size:22px; cursor:pointer; line-height:1;">&times;</button>
             </div>
-            <form id="addUserForm">
-                <div class="modal-body" style="padding:0;">
-                    <div id="addUserAlert" style="display:none; padding:10px 14px; border-radius:6px; font-size:13px; margin-bottom:14px;"></div>
+            <form id="addUserForm" onsubmit="handleCreateUserSubmit(event)">
+                <div class="modal-body" style="padding:0; display:flex; flex-direction:column; gap:16px;">
+                    <div id="addUserAlert" style="display:none; padding:10px 14px; border-radius:6px; font-size:13px;"></div>
                     
-                    <!-- Names or emails field -->
-                    <div class="form-group" style="margin-bottom:18px;">
-                        <label style="font-size:12px; font-weight:700; color:var(--jira-text-muted); text-transform:uppercase; letter-spacing:0.4px; margin-bottom:6px; display:block;">Names or emails <span style="color:#ff5630;">*</span></label>
-                        <input type="text" id="addEmailOrName" class="form-control" placeholder="e.g., Maria, maria@company.com" required style="height:40px; font-size:13px; border-radius:4px;">
-                        <div style="font-size:12px; color:var(--jira-text-muted); margin-top:6px;">Search by name, enter an email, or paste a list</div>
+                    <!-- Full Name field -->
+                    <div class="form-group">
+                        <label style="font-size:12px; font-weight:700; color:var(--jira-text-muted); margin-bottom:6px; display:block;">Full Name</label>
+                        <input type="text" id="addFullname" class="form-control" placeholder="e.g., Maria Gonzalez" style="height:38px; font-size:13px; border-radius:4px;">
                     </div>
 
-                    <!-- Role selector with dynamic description -->
-                    <div class="form-group" style="margin-bottom:18px;">
-                        <label style="font-size:12px; font-weight:700; color:var(--jira-text-muted); text-transform:uppercase; letter-spacing:0.4px; margin-bottom:6px; display:block;">Role <span style="color:#ff5630;">*</span></label>
-                        <select id="addRoleSelect" class="form-control" onchange="updateRoleDescription()" style="height:40px; font-size:13px; border-radius:4px; font-weight:600; cursor:pointer;">
-                            <option value="Member" selected>Member</option>
-                            <option value="Administrator">Administrator</option>
-                            <option value="Support Agent">Support Agent</option>
-                            <option value="Viewer">Viewer</option>
-                        </select>
-                        <div id="roleDescriptionBox" style="font-size:12px; color:var(--jira-text-muted); margin-top:8px; line-height:1.4; background:rgba(255,255,255,0.03); padding:8px 12px; border-radius:6px; border:1px solid var(--jira-border);">
-                            Members are part of the team, and can add, edit, and collaborate on all work.
+                    <!-- Email Address field -->
+                    <div class="form-group">
+                        <label style="font-size:12px; font-weight:700; color:var(--jira-text-muted); margin-bottom:6px; display:block;">Email Address <span style="color:#ff5630;">*</span></label>
+                        <input type="email" id="addEmail" class="form-control" placeholder="e.g., maria@company.com" required style="height:38px; font-size:13px; border-radius:4px;">
+                    </div>
+
+                    <!-- Password field with eye toggle -->
+                    <div class="form-group">
+                        <label style="font-size:12px; font-weight:700; color:var(--jira-text-muted); margin-bottom:6px; display:flex; align-items:center; justify-content:space-between;">
+                            <span>Password <span style="color:#ff5630;">*</span></span>
+                            <span style="font-size:11px; font-weight:500; color:var(--jira-text-muted);">Min. 6 characters</span>
+                        </label>
+                        <div style="position:relative; display:flex; align-items:center;">
+                            <input type="password" id="addPassword" class="form-control" placeholder="Enter initial password" required minlength="6" style="height:38px; font-size:13px; border-radius:4px; padding-right:40px;">
+                            <button type="button" onclick="toggleAddUserPassword()" title="Show/Hide Password" style="position:absolute; right:10px; background:none; border:none; color:var(--jira-text-muted); cursor:pointer; padding:4px; display:flex; align-items:center;">
+                                <svg id="addUserPasswordEyeIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Role selector and Department in 2-column grid -->
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+                        <div class="form-group">
+                            <label style="font-size:12px; font-weight:700; color:var(--jira-text-muted); margin-bottom:6px; display:block;">Role <span style="color:#ff5630;">*</span></label>
+                            <select id="addRole" class="form-control" style="height:38px; font-size:13px; border-radius:4px; font-weight:600; cursor:pointer;">
+                                <option value="Member" selected>Member</option>
+                                <option value="Administrator">Administrator</option>
+                                <option value="Support Agent">Support Agent</option>
+                                <option value="Viewer">Viewer</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label style="font-size:12px; font-weight:700; color:var(--jira-text-muted); margin-bottom:6px; display:block;">Department</label>
+                            <input type="text" id="addDepartment" class="form-control" value="Software Team" placeholder="e.g., Software Team" style="height:38px; font-size:13px; border-radius:4px;">
                         </div>
                     </div>
                 </div>
 
-                <div class="modal-footer" style="display:flex; align-items:center; justify-content:space-between; margin-top:24px; padding-top:16px; border-top:1px solid var(--jira-border);">
-                    <button type="button" class="btn-copy-link" onclick="copyInviteLink()" style="display:inline-flex; align-items:center; gap:6px; background:none; border:none; color:var(--jira-text-muted); font-size:13px; font-weight:600; cursor:pointer;">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-                        <span>Copy link</span>
-                    </button>
-                    <div style="display:flex; gap:10px;">
-                        <button type="button" class="btn-secondary btn-close-user-modal" style="height:36px; padding:0 16px; border-radius:4px; font-weight:600;">Cancel</button>
-                        <button type="submit" class="btn-primary" id="btnSubmitAddUser" style="height:36px; padding:0 22px; background:#0052cc; border-radius:4px; font-weight:600;">Add</button>
-                    </div>
+                <div class="modal-footer" style="display:flex; align-items:center; justify-content:flex-end; gap:10px; margin-top:20px; padding-top:16px; border-top:1px solid var(--jira-border);">
+                    <button type="button" class="btn-secondary btn-close-user-modal" onclick="closeAddUserModal()" style="height:36px; padding:0 16px; border-radius:4px; font-weight:600;">Cancel</button>
+                    <button type="submit" class="btn-primary" id="btnSubmitAddUser" style="height:36px; padding:0 22px; background:#0052cc; border-radius:4px; font-weight:600;">Add Person</button>
                 </div>
             </form>
         </div>
@@ -1184,85 +1203,135 @@
                 });
             }
 
-            // Add User Modal Handling
-            const btnOpenAddUserModal = document.getElementById('btnOpenAddUserModal');
-            const addUserModal = document.getElementById('addUserModal');
-            const closeUserModalBtns = document.querySelectorAll('.btn-close-user-modal');
-            const addUserForm = document.getElementById('addUserForm');
-            const addUserAlert = document.getElementById('addUserAlert');
+            // Add User Modal Global Handlers
+            window.toggleAddUserPassword = function() {
+                const pwdInput = document.getElementById('addPassword');
+                if (!pwdInput) return;
+                pwdInput.type = (pwdInput.type === 'password') ? 'text' : 'password';
+            };
 
-            if (btnOpenAddUserModal && addUserModal) {
-                btnOpenAddUserModal.addEventListener('click', () => {
-                    if (userDropdownMenu) userDropdownMenu.style.display = 'none';
-                    addUserModal.style.display = 'flex';
-                });
-            }
-
-            closeUserModalBtns.forEach(btn => {
-                btn.addEventListener('click', () => {
-                    if (addUserModal) addUserModal.style.display = 'none';
-                });
-            });
-
-            if (addUserForm) {
-                addUserForm.addEventListener('click', (e) => e.stopPropagation());
-                addUserForm.addEventListener('submit', async (e) => {
-                    e.preventDefault();
-                    const fullName = document.getElementById('addFullname').value.trim();
-                    const username = document.getElementById('addUsername').value.trim();
-                    const email = document.getElementById('addEmail').value.trim();
-                    const password = document.getElementById('addPassword').value.trim();
-                    const roleName = document.getElementById('addRole').value;
-                    const department = document.getElementById('addDepartment').value.trim();
-
-                    addUserAlert.style.display = 'none';
-
-                    try {
-                        const response = await fetch('/api/users/create/', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRFToken': getCookie('csrftoken') || ''
-                            },
-                            body: JSON.stringify({
-                                full_name: fullName,
-                                username: username,
-                                email: email,
-                                password: password,
-                                role_name: roleName,
-                                department: department
-                            })
-                        });
-
-                        const data = await response.json();
-                        if (data.success) {
-                            addUserAlert.className = '';
-                            addUserAlert.style.background = 'rgba(34, 197, 94, 0.2)';
-                            addUserAlert.style.color = '#86efac';
-                            addUserAlert.style.border = '1px solid rgba(34, 197, 94, 0.4)';
-                            addUserAlert.innerText = `Account created successfully for ${data.user.full_name}!`;
-                            addUserAlert.style.display = 'block';
-                            addUserForm.reset();
-                            setTimeout(() => {
-                                if (addUserModal) addUserModal.style.display = 'none';
-                                window.location.reload();
-                            }, 1200);
-                        } else {
-                            addUserAlert.style.background = 'rgba(239, 68, 68, 0.2)';
-                            addUserAlert.style.color = '#fca5a5';
-                            addUserAlert.style.border = '1px solid rgba(239, 68, 68, 0.4)';
-                            addUserAlert.innerText = data.error || 'Failed to create user account.';
-                            addUserAlert.style.display = 'block';
-                        }
-                    } catch (err) {
-                        addUserAlert.style.background = 'rgba(239, 68, 68, 0.2)';
-                        addUserAlert.style.color = '#fca5a5';
-                        addUserAlert.style.border = '1px solid rgba(239, 68, 68, 0.4)';
-                        addUserAlert.innerText = 'Network error while creating account.';
-                        addUserAlert.style.display = 'block';
+            window.openAddUserModal = function() {
+                {% if not is_admin %}
+                alert('Administrator permissions required to add people.');
+                return;
+                {% endif %}
+                const modal = document.getElementById('addUserModal');
+                if (modal) {
+                    modal.style.display = 'flex';
+                    const alertBox = document.getElementById('addUserAlert');
+                    if (alertBox) alertBox.style.display = 'none';
+                    const form = document.getElementById('addUserForm');
+                    if (form) form.reset();
+                    const dept = document.getElementById('addDepartment');
+                    if (dept) dept.value = 'Software Team';
+                    const submitBtn = document.getElementById('btnSubmitAddUser');
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = 'Add Person';
                     }
-                });
-            }
+                    setTimeout(() => {
+                        const nameInput = document.getElementById('addFullname');
+                        if (nameInput) nameInput.focus();
+                    }, 50);
+                }
+            };
+
+            window.closeAddUserModal = function() {
+                const modal = document.getElementById('addUserModal');
+                if (modal) modal.style.display = 'none';
+            };
+
+            window.handleCreateUserSubmit = async function(e) {
+                e.preventDefault();
+                const fullName = (document.getElementById('addFullname')?.value || '').trim();
+                const email = (document.getElementById('addEmail')?.value || '').trim();
+                const password = (document.getElementById('addPassword')?.value || '').trim();
+                const roleName = document.getElementById('addRole')?.value || 'Member';
+                const department = (document.getElementById('addDepartment')?.value || '').trim() || 'Software Team';
+                const submitBtn = document.getElementById('btnSubmitAddUser');
+                const alertBox = document.getElementById('addUserAlert');
+
+                if (!email || !password) {
+                    if (alertBox) {
+                        alertBox.className = '';
+                        alertBox.style.background = 'rgba(239, 68, 68, 0.2)';
+                        alertBox.style.color = '#fca5a5';
+                        alertBox.style.border = '1px solid rgba(239, 68, 68, 0.4)';
+                        alertBox.innerText = 'Email and password are required.';
+                        alertBox.style.display = 'block';
+                    }
+                    return;
+                }
+
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.textContent = 'Adding...';
+                }
+                if (alertBox) alertBox.style.display = 'none';
+
+                try {
+                    const response = await fetch('/api/users/create/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': getCookie('csrftoken') || ''
+                        },
+                        body: JSON.stringify({
+                            full_name: fullName,
+                            email: email,
+                            password: password,
+                            role_name: roleName,
+                            department: department
+                        })
+                    });
+
+                    const data = await response.json();
+                    if (data.success) {
+                        if (alertBox) {
+                            alertBox.className = '';
+                            alertBox.style.background = 'rgba(34, 197, 94, 0.2)';
+                            alertBox.style.color = '#86efac';
+                            alertBox.style.border = '1px solid rgba(34, 197, 94, 0.4)';
+                            alertBox.innerText = data.message || `Account created successfully for ${data.user.full_name}!`;
+                            alertBox.style.display = 'block';
+                        }
+                        const form = document.getElementById('addUserForm');
+                        if (form) form.reset();
+                        setTimeout(() => {
+                            closeAddUserModal();
+                            if (window.location.pathname.includes('/teams/')) {
+                                window.location.reload();
+                            }
+                        }, 1000);
+                    } else {
+                        if (alertBox) {
+                            alertBox.className = '';
+                            alertBox.style.background = 'rgba(239, 68, 68, 0.2)';
+                            alertBox.style.color = '#fca5a5';
+                            alertBox.style.border = '1px solid rgba(239, 68, 68, 0.4)';
+                            alertBox.innerText = data.error || 'Failed to create user account.';
+                            alertBox.style.display = 'block';
+                        }
+                        if (submitBtn) {
+                            submitBtn.disabled = false;
+                            submitBtn.textContent = 'Add Person';
+                        }
+                    }
+                } catch (err) {
+                    if (alertBox) {
+                        alertBox.className = '';
+                        alertBox.style.background = 'rgba(239, 68, 68, 0.2)';
+                        alertBox.style.color = '#fca5a5';
+                        alertBox.style.border = '1px solid rgba(239, 68, 68, 0.4)';
+                        alertBox.innerText = 'Network error while creating account: ' + err.message;
+                        alertBox.style.display = 'block';
+                    }
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = 'Add Person';
+                    }
+                }
+            };
         })();
     </script>
 

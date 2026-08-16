@@ -429,43 +429,46 @@ def can_user_edit_ticket(user):
 @login_required
 @require_POST
 def api_create_user(request):
-    """Admin-only API endpoint to add new team accounts ("Add people to Team Vatana")."""
+    """Admin-only API endpoint to register and create a new team member account with email and password."""
     profile = getattr(request.user, 'profile', None)
     is_admin = request.user.is_superuser or (profile and profile.role and profile.role.role_name in ['Admin', 'Administrator'])
 
     if not is_admin:
-        return JsonResponse({'success': False, 'error': 'Permission denied. Only Admins can add new team accounts.'}, status=403)
+        return JsonResponse({'success': False, 'error': 'Permission denied. Only Admins can add new team members.'}, status=403)
 
     try:
         data = json.loads(request.body)
-        raw_input = data.get('names_or_emails', '').strip() or data.get('email', '').strip() or data.get('full_name', '').strip()
+        full_name = data.get('full_name', '').strip()
+        email = data.get('email', '').strip().lower()
+        password = data.get('password', '').strip()
         role_name_input = data.get('role_name', 'Member').strip()
+        department = data.get('department', '').strip() or 'Software Team'
 
-        if not raw_input:
-            return JsonResponse({'success': False, 'error': 'Name or email is required.'}, status=400)
+        if not email:
+            return JsonResponse({'success': False, 'error': 'Email address is required.'}, status=400)
+        
+        if '@' not in email:
+            return JsonResponse({'success': False, 'error': 'Please enter a valid email address.'}, status=400)
 
-        # Extract email and full name
-        if '@' in raw_input:
-            email = raw_input.lower()
-            username = email.split('@')[0]
-            full_name = data.get('full_name', '').strip() or username.capitalize()
-        else:
-            full_name = raw_input
-            username = raw_input.lower().replace(' ', '')
-            email = f"{username}@company.com"
+        if not password:
+            return JsonResponse({'success': False, 'error': 'Password is required.'}, status=400)
 
-        # Check existing username / email
-        base_username = username
+        if len(password) < 6:
+            return JsonResponse({'success': False, 'error': 'Password must be at least 6 characters long.'}, status=400)
+
+        # Check existing email
+        if User.objects.filter(email__iexact=email).exists():
+            return JsonResponse({'success': False, 'error': f'An account with email "{email}" already exists.'}, status=400)
+
+        # Generate unique username from email
+        base_username = email.split('@')[0]
+        username = base_username
         counter = 1
         while User.objects.filter(username__iexact=username).exists():
             username = f"{base_username}{counter}"
             counter += 1
 
-        if User.objects.filter(email__iexact=email).exists():
-            email = f"{username}@company.com"
-
-        password = data.get('password', '').strip() or 'Welcome123!'
-
+        # Create user
         user = User.objects.create_user(username=username, email=email, password=password)
         if full_name:
             name_parts = full_name.split()
@@ -482,83 +485,53 @@ def api_create_user(request):
                 user.is_superuser = True
             user.save()
 
-        UserProfile.objects.create(
+        # Curated avatar colors
+        avatar_colors = ['#0052cc', '#0747a6', '#00875a', '#ff5630', '#ffab00', '#6554c0', '#00b8d9', '#579dff']
+        chosen_color = avatar_colors[user.id % len(avatar_colors)]
+
+        # Display name and initials
+        disp_name = full_name or user.username
+        parts = disp_name.split()
+        initials = (parts[0][0] + parts[-1][0]).upper() if len(parts) >= 2 else disp_name[:2].upper()
+
+        new_profile = UserProfile.objects.create(
             user=user,
             role=role_obj,
-            full_name=full_name or username,
-            status='Active'
-        )
-
-        return JsonResponse({
-            'success': True,
-            'user': {
-                'id': user.id,
-                'username': user.username,
-                'email': user.email,
-                'full_name': full_name or user.username,
-                'role': role_obj.role_name
-            }
-        })
-    except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
-
-    try:
-        data = json.loads(request.body)
-        full_name = data.get('full_name', '').strip()
-        username = data.get('username', '').strip().lower()
-        email = data.get('email', '').strip().lower()
-        password = data.get('password', '').strip()
-        role_id = data.get('role_id')
-        department = data.get('department', '').strip()
-
-        if not username or not email or not password:
-            return JsonResponse({'success': False, 'error': 'Username, email, and password are required.'}, status=400)
-
-        if User.objects.filter(username__iexact=username).exists():
-            return JsonResponse({'success': False, 'error': 'Username is already taken.'}, status=400)
-
-        if User.objects.filter(email__iexact=email).exists():
-            return JsonResponse({'success': False, 'error': 'Email is already in use.'}, status=400)
-
-        user = User.objects.create_user(username=username, email=email, password=password)
-        if full_name:
-            name_parts = full_name.split()
-            user.first_name = name_parts[0]
-            if len(name_parts) > 1:
-                user.last_name = " ".join(name_parts[1:])
-            user.save()
-
-        role_id = data.get('role_id')
-        role_name = data.get('role_name')
-        role_obj = None
-        if role_id:
-            role_obj = Role.objects.filter(role_id=role_id).first()
-        if not role_obj and role_name:
-            role_obj = Role.objects.filter(role_name__iexact=role_name).first()
-
-        if role_obj and role_obj.role_name in ['Admin', 'Support Agent']:
-            user.is_staff = True
-            if role_obj.role_name == 'Admin':
-                user.is_superuser = True
-            user.save()
-
-
-        UserProfile.objects.create(
-            user=user,
-            role=role_obj,
-            full_name=full_name or username,
+            full_name=disp_name,
             department=department,
-            status='Active'
+            status='Active',
+            is_email_verified=True,  # Admin-created users are pre-verified so they can log in right away
+            avatar_color=chosen_color
         )
+
+        # Pusher realtime broadcast
+        try:
+            pusher_client.trigger('team_management', 'user-added', {
+                'user_id': user.id,
+                'username': user.username,
+                'display_name': disp_name,
+                'email': user.email,
+                'role': role_obj.role_name,
+                'department': department,
+                'initials': initials,
+                'avatar_color': chosen_color,
+                'status': 'Active'
+            })
+        except Exception as p_err:
+            print(f"[Pusher] user-added error: {p_err}")
 
         return JsonResponse({
             'success': True,
+            'message': f'Account created successfully for {disp_name}!',
             'user': {
                 'id': user.id,
                 'username': user.username,
                 'email': user.email,
-                'full_name': full_name or user.username,
-                'role': role_obj.role_name if role_obj else 'User'
+                'full_name': disp_name,
+                'role': role_obj.role_name,
+                'department': department,
+                'initials': initials,
+                'avatar_color': chosen_color
             }
         })
     except Exception as e:

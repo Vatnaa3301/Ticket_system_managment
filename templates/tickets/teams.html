@@ -263,6 +263,11 @@
                 setTimeout(() => row.remove(), 200);
             }
         });
+
+        channel.bind('user-added', function(data) {
+            // Auto reload to reflect the new member and counts
+            window.location.reload();
+        });
     }
 </script>
 {% endblock %}
