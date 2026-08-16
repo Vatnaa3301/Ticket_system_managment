@@ -47,16 +47,18 @@ def send_verification_email(request, user):
         verify_url = f"http://127.0.0.1:8000{verify_path}"
 
     display_name = profile.full_name or user.username
-    subject = "Verify your email address for Team Vatana Jira"
+    team_setting = TeamSetting.get_settings()
+    team_name = team_setting.name
+    subject = f"Verify your email address for {team_name} Jira"
 
     html_content = f"""
     <div style="font-family: Arial, sans-serif; max-width: 580px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden; background-color: #ffffff;">
         <div style="background-color: #0052cc; color: #ffffff; padding: 22px 24px;">
-            <h2 style="margin: 0; font-size: 20px; font-weight: 700;">Team Vatana Jira</h2>
+            <h2 style="margin: 0; font-size: 20px; font-weight: 700;">{team_name} Jira</h2>
         </div>
         <div style="padding: 28px 24px; color: #172b4d; line-height: 1.6;">
             <p style="font-size: 15px; margin-top: 0;">Hi <strong>{display_name}</strong>,</p>
-            <p style="font-size: 14px;">Welcome to <strong>Team Vatana Jira</strong>! Please verify your email address to complete your registration and start receiving ticket notifications.</p>
+            <p style="font-size: 14px;">Welcome to <strong>{team_name} Jira</strong>! Please verify your email address to complete your registration and start receiving ticket notifications.</p>
             
             <div style="text-align: center; margin: 26px 0;">
                 <a href="{verify_url}" style="background-color: #0052cc; color: #ffffff; text-decoration: none; padding: 12px 28px; font-weight: bold; font-size: 14px; border-radius: 4px; display: inline-block;" target="_blank">Verify Email Address</a>
@@ -66,7 +68,7 @@ def send_verification_email(request, user):
             <div style="background: #f4f5f7; padding: 10px; border-radius: 4px; font-size: 12px; color: #0052cc; word-break: break-all; border: 1px solid #e0e0e0;">{verify_url}</div>
         </div>
         <div style="background-color: #fafbfc; border-top: 1px solid #ebecf0; padding: 16px 24px; text-align: center; font-size: 12px; color: #6b778c;">
-            &copy; 2026 Team Vatana Jira. All rights reserved.
+            &copy; 2026 {team_name} Jira. All rights reserved.
         </div>
     </div>
     """
@@ -106,64 +108,87 @@ def send_verification_email(request, user):
 
 
 def send_assignment_email(ticket, assigned_user):
-    """Send email notification via Resend when a ticket is assigned to a user (asynchronously in background thread)."""
-    def _run_email_send():
-        try:
-            if not assigned_user or not assigned_user.email:
-                return
+    """Send email notification when a ticket is assigned to a user (compatible with Vercel serverless)."""
+    try:
+        if not assigned_user or not assigned_user.email:
+            return
 
-            profile = getattr(assigned_user, 'profile', None)
-            if profile and not profile.is_email_verified:
-                print(f"[Notification] Skipping assignment email for {assigned_user.email} (Email not verified yet).")
-                return
+        team_setting = TeamSetting.get_settings()
+        team_name = team_setting.name
 
-            resend_key = os.environ.get('RESEND_API_KEY', '')
-            if not resend_key:
-                return
+        profile = getattr(assigned_user, 'profile', None)
+        display_name = profile.full_name or assigned_user.username if profile else assigned_user.username
 
-            resend.api_key = resend_key
-            sender_email = os.environ.get('RESEND_FROM_EMAIL', 'onboarding@resend.dev')
+        subject = f"[{team_name} · Ticket Assigned] {ticket.ticket_code}: {ticket.subject}"
+        assigned_by = ticket.user.username if ticket.user else "System"
 
-            subject = f"[Ticket Assigned] {ticket.ticket_code}: {ticket.subject}"
-            assigned_by = ticket.user.username if ticket.user else "System"
+        start_date_str = safe_format_date(ticket.start_date, '%d %b %Y') or 'N/A'
+        due_date_str = safe_format_date(ticket.due_date, '%d %b %Y') or 'N/A'
+        prio_name = ticket.priority.priority_name if ticket.priority else 'Medium'
+        status_name = ticket.status.status_name if ticket.status else 'Open'
 
-            start_date_str = safe_format_date(ticket.start_date, '%d %b %Y') or 'N/A'
-            due_date_str = safe_format_date(ticket.due_date, '%d %b %Y') or 'N/A'
-            prio_name = ticket.priority.priority_name if ticket.priority else 'Medium'
-            status_name = ticket.status.status_name if ticket.status else 'Open'
-
-            html_content = f"""
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden; background-color: #ffffff;">
-                <div style="background-color: #0052cc; color: #ffffff; padding: 20px 24px;">
-                    <h2 style="margin: 0; font-size: 20px; font-weight: 700;">🎫 Ticket Assigned to You</h2>
-                </div>
-                <div style="padding: 24px; color: #172b4d;">
-                    <p style="font-size: 15px; margin-top: 0;">Hi <strong>{assigned_user.username}</strong>,</p>
-                    <p style="font-size: 14px;">You have been assigned to ticket <strong>{ticket.ticket_code}</strong> by {assigned_by}.</p>
-                    
-                    <div style="background-color: #f4f5f7; border-left: 4px solid #0052cc; padding: 16px; border-radius: 4px; margin: 20px 0;">
-                        <p style="margin: 0 0 8px 0; font-size: 14px;"><strong>Subject:</strong> {ticket.subject}</p>
-                        <p style="margin: 0 0 8px 0; font-size: 14px;"><strong>Priority:</strong> {prio_name}</p>
-                        <p style="margin: 0 0 8px 0; font-size: 14px;"><strong>Status:</strong> {status_name}</p>
-                        <p style="margin: 0; font-size: 14px;"><strong>Start Date:</strong> {start_date_str} | <strong>Due Date:</strong> {due_date_str}</p>
-                    </div>
-                    
-                    <p style="font-size: 13px; color: #626f86;">Log into Team Vatana Jira system to review and manage this ticket.</p>
-                </div>
+        html_content = f"""
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden; background-color: #ffffff;">
+            <div style="background-color: #0052cc; color: #ffffff; padding: 20px 24px;">
+                <h2 style="margin: 0; font-size: 20px; font-weight: 700;">🎫 New Ticket Assigned to You</h2>
+                <div style="font-size: 13px; opacity: 0.9; margin-top: 4px;">{team_name} Ticket System</div>
             </div>
-            """
-            resend.Emails.send({
-                "from": sender_email,
-                "to": [assigned_user.email],
-                "subject": subject,
-                "html": html_content
-            })
-            print(f"Successfully sent assignment notification email to {assigned_user.email} for ticket {ticket.ticket_code}")
-        except Exception as e:
-            print(f"Resend notification error: {e}")
+            <div style="padding: 24px; color: #172b4d;">
+                <p style="font-size: 15px; margin-top: 0;">Hi <strong>{display_name}</strong>,</p>
+                <p style="font-size: 14px; line-height: 1.5;">You have been assigned to ticket <strong>{ticket.ticket_code}</strong> by <strong>{assigned_by}</strong>.</p>
+                
+                <div style="background-color: #f4f5f7; border-left: 4px solid #0052cc; padding: 16px; border-radius: 4px; margin: 20px 0;">
+                    <p style="margin: 0 0 8px 0; font-size: 14px;"><strong>Subject:</strong> {ticket.subject}</p>
+                    <p style="margin: 0 0 8px 0; font-size: 14px;"><strong>Priority:</strong> {prio_name}</p>
+                    <p style="margin: 0 0 8px 0; font-size: 14px;"><strong>Status:</strong> {status_name}</p>
+                    <p style="margin: 0; font-size: 14px;"><strong>Start Date:</strong> {start_date_str} | <strong>Due Date:</strong> {due_date_str}</p>
+                </div>
+                
+                <p style="font-size: 13px; color: #626f86; line-height: 1.5;">Log into your <strong>{team_name}</strong> Jira workspace to view the complete details, collaborate, and update progress.</p>
+            </div>
+            <div style="background-color: #fafbfc; border-top: 1px solid #ebecf0; padding: 14px 24px; text-align: center; font-size: 12px; color: #6b778c;">
+                &copy; 2026 {team_name} Jira System. All rights reserved.
+            </div>
+        </div>
+        """
 
-    import threading
-    threading.Thread(target=_run_email_send, daemon=True).start()
+        # 1. Try Resend API if RESEND_API_KEY is configured
+        resend_key = os.environ.get('RESEND_API_KEY', '').strip()
+        sent = False
+        if resend_key:
+            try:
+                resend.api_key = resend_key
+                sender_email = os.environ.get('RESEND_FROM_EMAIL', '').strip() or 'onboarding@resend.dev'
+                resend.Emails.send({
+                    "from": sender_email,
+                    "to": [assigned_user.email],
+                    "subject": subject,
+                    "html": html_content
+                })
+                print(f"[Email Notification] Resend delivered assignment email to {assigned_user.email} for {ticket.ticket_code}")
+                sent = True
+            except Exception as r_err:
+                print(f"[Email Notification] Resend API Error: {r_err}")
+
+        # 2. Fallback to standard Django send_mail (SMTP / Gmail / SendGrid) if not sent via Resend
+        if not sent:
+            try:
+                from django.core.mail import send_mail
+                from_addr = getattr(settings, 'DEFAULT_FROM_EMAIL', None) or f"{team_name} <noreply@vatana-jira.com>"
+                send_mail(
+                    subject=subject,
+                    message=f"Hi {display_name},\n\nYou have been assigned to ticket {ticket.ticket_code}: {ticket.subject}\n\nLog in to {team_name} Jira to review it.",
+                    from_email=from_addr,
+                    recipient_list=[assigned_user.email],
+                    html_message=html_content,
+                    fail_silently=True
+                )
+                print(f"[Email Notification] Django send_mail triggered for {assigned_user.email}")
+            except Exception as d_err:
+                print(f"[Email Notification] Django send_mail Error: {d_err}")
+
+    except Exception as e:
+        print(f"[Email Notification] Assignment email failed: {e}")
 
 
 from django.http import JsonResponse
