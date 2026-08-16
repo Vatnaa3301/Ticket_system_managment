@@ -2212,3 +2212,76 @@ def api_update_team_icon(request):
         return JsonResponse({'success': False, 'error': str(e)}, status=400)
 
 
+@login_required
+def api_search_tickets(request):
+    """Search tickets by code, subject, description, category, or assignee for global search dropdown."""
+    query = request.GET.get('q', '').strip()
+    
+    if query:
+        tickets_qs = Ticket.objects.filter(
+            Q(ticket_code__icontains=query) |
+            Q(subject__icontains=query) |
+            Q(description__icontains=query) |
+            Q(category__category_name__icontains=query) |
+            Q(assigned_to__username__icontains=query) |
+            Q(assigned_to__profile__full_name__icontains=query)
+        ).select_related('status', 'category', 'assigned_to', 'priority').order_by('-updated_at')[:15]
+    else:
+        # Recently updated tickets
+        tickets_qs = Ticket.objects.select_related('status', 'category', 'assigned_to', 'priority').order_by('-updated_at')[:8]
+
+    team_setting = TeamSetting.get_settings()
+    team_name = team_setting.name
+
+    results = []
+    now = timezone.now()
+
+    for t in tickets_qs:
+        diff = now - t.updated_at
+        if diff.days > 30:
+            time_str = t.updated_at.strftime("%b %d, %Y")
+        elif diff.days == 1:
+            time_str = "Yesterday"
+        elif diff.days > 1:
+            time_str = f"{diff.days} days ago"
+        elif diff.seconds >= 3600:
+            hours = diff.seconds // 3600
+            time_str = f"{hours} hour{'s' if hours > 1 else ''} ago"
+        elif diff.seconds >= 60:
+            mins = diff.seconds // 60
+            time_str = f"{mins} minute{'s' if mins > 1 else ''} ago"
+        else:
+            time_str = "Just now"
+
+        cat_name = (t.category.category_name if t.category else '').lower()
+        sub_lower = t.subject.lower()
+        if 'bug' in cat_name or 'error' in sub_lower or 'bug' in sub_lower:
+            issue_type = 'Bug'
+        elif 'subtask' in cat_name or 'sub-task' in cat_name:
+            issue_type = 'Subtask'
+        elif 'task' in cat_name:
+            issue_type = 'Task'
+        else:
+            issue_type = 'Story'
+
+        results.append({
+            'ticket_id': t.ticket_id,
+            'ticket_code': t.ticket_code,
+            'subject': t.subject,
+            'issue_type': issue_type,
+            'status_name': t.status.status_name if t.status else 'To Do',
+            'status_slug': t.status.status_name.lower().replace(' ', '-') if t.status else 'to-do',
+            'priority': t.priority.priority_name if t.priority else 'Medium',
+            'team_name': team_name,
+            'time_str': time_str,
+            'assignee': (t.assigned_to.profile.full_name or t.assigned_to.username) if t.assigned_to else 'Unassigned'
+        })
+
+    return JsonResponse({
+        'success': True,
+        'query': query,
+        'count': len(results),
+        'tickets': results
+    })
+
+

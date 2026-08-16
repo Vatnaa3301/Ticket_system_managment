@@ -198,6 +198,215 @@ body {
     color: var(--jira-text-muted);
 }
 
+/* JIRA GLOBAL SEARCH DROPDOWN */
+.search-box-wrapper {
+    position: relative;
+}
+
+.jira-global-search-dropdown {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    width: 520px;
+    max-width: 90vw;
+    background: #1e1e22;
+    border: 1px solid #333338;
+    border-radius: 8px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
+    z-index: 9999999;
+    overflow: hidden;
+    animation: searchDropdownFade 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-theme="light"] .jira-global-search-dropdown {
+    background: #ffffff;
+    border-color: #dfe1e6;
+    box-shadow: 0 16px 40px rgba(9, 30, 66, 0.25);
+}
+
+@keyframes searchDropdownFade {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.jira-search-tab-bar {
+    display: flex;
+    padding: 10px 16px 0 16px;
+    border-bottom: 1px solid #2e2e34;
+}
+[data-theme="light"] .jira-search-tab-bar {
+    border-bottom-color: #ebecf0;
+}
+
+.jira-search-tab-item {
+    font-size: 13px;
+    font-weight: 600;
+    color: #579dff;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #579dff;
+    cursor: default;
+}
+[data-theme="light"] .jira-search-tab-item {
+    color: #0052cc;
+    border-bottom-color: #0052cc;
+}
+
+.jira-search-content {
+    padding: 10px 0;
+    max-height: 380px;
+    overflow-y: auto;
+}
+
+.jira-search-section-label {
+    padding: 4px 16px 8px 16px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #8c9bab;
+}
+[data-theme="light"] .jira-search-section-label {
+    color: #626f86;
+}
+
+.jira-search-items-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.jira-search-item-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.12s ease;
+    gap: 12px;
+}
+
+.jira-search-item-row:hover, .jira-search-item-row.active-keyboard {
+    background: rgba(255, 255, 255, 0.06);
+}
+[data-theme="light"] .jira-search-item-row:hover, [data-theme="light"] .jira-search-item-row.active-keyboard {
+    background: #f4f5f7;
+}
+
+.jira-search-item-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    flex: 1;
+}
+
+.jira-search-type-icon {
+    width: 20px;
+    height: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border-radius: 3px;
+}
+
+.jira-search-item-title-box {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.jira-search-item-code {
+    font-size: 13px;
+    font-weight: 700;
+    color: #579dff;
+    flex-shrink: 0;
+}
+[data-theme="light"] .jira-search-item-code {
+    color: #0052cc;
+}
+
+.jira-search-item-subject {
+    font-size: 13px;
+    font-weight: 500;
+    color: #dee4ea;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+[data-theme="light"] .jira-search-item-subject {
+    color: #172b4d;
+}
+
+.jira-search-item-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.jira-search-item-time {
+    font-size: 12px;
+    color: #8c9bab;
+}
+
+.jira-search-no-results {
+    padding: 28px 16px;
+    text-align: center;
+    color: #8c9bab;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+}
+
+.jira-search-dropdown-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    border-top: 1px solid #2e2e34;
+    background: rgba(0, 0, 0, 0.15);
+    font-size: 12px;
+    color: #8c9bab;
+}
+[data-theme="light"] .jira-search-dropdown-footer {
+    border-top-color: #ebecf0;
+    background: #fafbfc;
+    color: #626f86;
+}
+
+.jira-search-footer-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-weight: 500;
+}
+.jira-search-footer-left:hover {
+    color: #579dff;
+}
+
+.jira-search-kbd-hint {
+    background: #2a2a2e;
+    border: 1px solid #3e3e46;
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 11px;
+    font-family: inherit;
+    color: #8c9bab;
+}
+[data-theme="light"] .jira-search-kbd-hint {
+    background: #ebecf0;
+    border-color: #dfe1e6;
+    color: #42526e;
+}
+
 .btn-create {
     background: var(--jira-blue);
     color: white;

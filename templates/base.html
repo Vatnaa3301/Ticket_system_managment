@@ -61,9 +61,35 @@
                 <div class="jira-brand-icon">J</div>
                 <span>Jira</span>
             </a>
-            <div class="search-box">
-                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                <input type="text" placeholder="Search">
+            <div class="search-box-wrapper" style="position:relative;">
+                <div class="search-box" id="globalSearchBoxContainer">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                    <input type="text" id="globalSearchInput" placeholder="Search Jira" autocomplete="off">
+                </div>
+
+                <!-- JIRA GLOBAL SEARCH DROPDOWN -->
+                <div class="jira-global-search-dropdown" id="globalSearchDropdown" style="display:none;">
+                    <div class="jira-search-tab-bar">
+                        <span class="jira-search-tab-item active">Jira</span>
+                    </div>
+                    <div class="jira-search-content">
+                        <div class="jira-search-section-label" id="globalSearchSectionLabel">RECENTLY VIEWED</div>
+                        <div class="jira-search-items-list" id="globalSearchItemsList">
+                            <!-- Dynamically populated ticket rows -->
+                        </div>
+                        <div class="jira-search-no-results" id="globalSearchNoResults" style="display:none;">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+                            <span>No matching tickets found</span>
+                        </div>
+                    </div>
+                    <div class="jira-search-dropdown-footer">
+                        <div class="jira-search-footer-left">
+                            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                            <span id="globalSearchFooterText">View all work items</span>
+                        </div>
+                        <kbd class="jira-search-kbd-hint">↵</kbd>
+                    </div>
+                </div>
             </div>
             <button type="button" class="btn-create btn-open-create-modal">
                 <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
@@ -1332,6 +1358,167 @@
                     }
                 }
             };
+
+            // GLOBAL SEARCH AUTOCOMPLETE HANDLER (SEARCH TICKETS MATCHING JIRA)
+            (function() {
+                const searchInput = document.getElementById('globalSearchInput');
+                const searchDropdown = document.getElementById('globalSearchDropdown');
+                const searchItemsList = document.getElementById('globalSearchItemsList');
+                const searchSectionLabel = document.getElementById('globalSearchSectionLabel');
+                const searchNoResults = document.getElementById('globalSearchNoResults');
+                const searchFooter = document.querySelector('.jira-search-dropdown-footer');
+                let debounceTimer = null;
+                let activeIndex = -1;
+                let currentItems = [];
+
+                function getIssueTypeIcon(type) {
+                    if (type === 'Bug') {
+                        return `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>`;
+                    } else if (type === 'Task') {
+                        return `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#579dff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><polyline points="9 12 12 15 16 9"/></svg>`;
+                    } else if (type === 'Subtask') {
+                        return `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#579dff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`;
+                    } else {
+                        // Story / Feature
+                        return `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>`;
+                    }
+                }
+
+                function renderResults(tickets, query) {
+                    currentItems = tickets || [];
+                    activeIndex = -1;
+                    if (!searchItemsList) return;
+
+                    searchItemsList.innerHTML = '';
+                    if (!tickets || tickets.length === 0) {
+                        if (searchSectionLabel) searchSectionLabel.style.display = 'none';
+                        if (searchNoResults) searchNoResults.style.display = 'flex';
+                        return;
+                    }
+
+                    if (searchNoResults) searchNoResults.style.display = 'none';
+                    if (searchSectionLabel) {
+                        searchSectionLabel.style.display = 'block';
+                        searchSectionLabel.textContent = query ? 'MATCHING TICKETS' : 'RECENTLY VIEWED';
+                    }
+
+                    tickets.forEach((t, idx) => {
+                        const row = document.createElement('div');
+                        row.className = 'jira-search-item-row';
+                        row.dataset.index = idx;
+                        row.dataset.ticketId = t.ticket_id;
+                        row.innerHTML = `
+                            <div class="jira-search-item-left">
+                                <div class="jira-search-type-icon">${getIssueTypeIcon(t.issue_type)}</div>
+                                <div class="jira-search-item-title-box">
+                                    <span class="jira-search-item-code">${t.ticket_code}</span>
+                                    <span class="jira-search-item-subject">${escapeHtml(t.subject)}</span>
+                                </div>
+                            </div>
+                            <div class="jira-search-item-right">
+                                <span class="jira-search-item-time">${t.time_str}</span>
+                            </div>
+                        `;
+
+                        row.addEventListener('click', () => {
+                            selectTicket(t.ticket_id);
+                        });
+
+                        searchItemsList.appendChild(row);
+                    });
+                }
+
+                function escapeHtml(str) {
+                    if (!str) return '';
+                    return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+                }
+
+                function selectTicket(ticketId) {
+                    if (searchDropdown) searchDropdown.style.display = 'none';
+                    if (searchInput) searchInput.blur();
+                    if (typeof window.openTicketDetailModal === 'function') {
+                        window.openTicketDetailModal(ticketId);
+                    } else {
+                        window.location.href = `/board/?ticket=${ticketId}`;
+                    }
+                }
+
+                async function performSearch(query) {
+                    try {
+                        const res = await fetch(`/api/tickets/search/?q=${encodeURIComponent(query)}`);
+                        const data = await res.json();
+                        if (data.success) {
+                            renderResults(data.tickets, query);
+                        }
+                    } catch (err) {
+                        console.error('Search fetch error:', err);
+                    }
+                }
+
+                if (searchInput && searchDropdown) {
+                    searchInput.addEventListener('focus', () => {
+                        searchDropdown.style.display = 'block';
+                        performSearch(searchInput.value.trim());
+                    });
+
+                    searchInput.addEventListener('input', (e) => {
+                        clearTimeout(debounceTimer);
+                        const q = e.target.value.trim();
+                        debounceTimer = setTimeout(() => {
+                            performSearch(q);
+                        }, 150);
+                    });
+
+                    searchInput.addEventListener('keydown', (e) => {
+                        if (!searchDropdown || searchDropdown.style.display === 'none') return;
+                        const rows = searchItemsList.querySelectorAll('.jira-search-item-row');
+                        if (rows.length === 0) return;
+
+                        if (e.key === 'ArrowDown') {
+                            e.preventDefault();
+                            activeIndex = (activeIndex + 1) % rows.length;
+                            updateActiveRow(rows);
+                        } else if (e.key === 'ArrowUp') {
+                            e.preventDefault();
+                            activeIndex = (activeIndex - 1 + rows.length) % rows.length;
+                            updateActiveRow(rows);
+                        } else if (e.key === 'Enter') {
+                            e.preventDefault();
+                            if (activeIndex >= 0 && activeIndex < currentItems.length) {
+                                selectTicket(currentItems[activeIndex].ticket_id);
+                            } else if (currentItems.length > 0) {
+                                selectTicket(currentItems[0].ticket_id);
+                            }
+                        } else if (e.key === 'Escape') {
+                            searchDropdown.style.display = 'none';
+                        }
+                    });
+
+                    function updateActiveRow(rows) {
+                        rows.forEach((r, idx) => {
+                            if (idx === activeIndex) {
+                                r.classList.add('active-keyboard');
+                                r.scrollIntoView({ block: 'nearest' });
+                            } else {
+                                r.classList.remove('active-keyboard');
+                            }
+                        });
+                    }
+
+                    document.addEventListener('click', (e) => {
+                        if (!searchInput.contains(e.target) && !searchDropdown.contains(e.target)) {
+                            searchDropdown.style.display = 'none';
+                        }
+                    });
+
+                    if (searchFooter) {
+                        searchFooter.addEventListener('click', () => {
+                            searchDropdown.style.display = 'none';
+                            window.location.href = '/list/';
+                        });
+                    }
+                }
+            })();
         })();
     </script>
 

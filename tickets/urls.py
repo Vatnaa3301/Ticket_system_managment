@@ -44,5 +44,6 @@ urlpatterns = [
     path('api/profile/update/', views.api_update_profile, name='api_update_profile'),
     path('api/team/update-name/', views.api_update_team_name, name='api_update_team_name'),
     path('api/team/update-icon/', views.api_update_team_icon, name='api_update_team_icon'),
+    path('api/tickets/search/', views.api_search_tickets, name='api_search_tickets'),
 ]
 
