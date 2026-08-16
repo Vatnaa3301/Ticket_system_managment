@@ -1445,15 +1445,28 @@
                     }
                 }
 
+                let currentSearchController = null;
+                let latestSearchQuery = '';
+
                 async function performSearch(query) {
+                    latestSearchQuery = query;
+                    if (currentSearchController) {
+                        currentSearchController.abort(); // Cancel previous search request immediately
+                    }
+                    currentSearchController = new AbortController();
+                    const { signal } = currentSearchController;
+
                     try {
-                        const res = await fetch(`/api/tickets/search/?q=${encodeURIComponent(query)}`);
+                        const res = await fetch(`/api/tickets/search/?q=${encodeURIComponent(query)}`, { signal });
                         const data = await res.json();
-                        if (data.success) {
+                        // Only render if this is still the active search query
+                        if (data.success && latestSearchQuery === query) {
                             renderResults(data.tickets, query);
                         }
                     } catch (err) {
-                        console.error('Search fetch error:', err);
+                        if (err.name !== 'AbortError') {
+                            console.error('Search fetch error:', err);
+                        }
                     }
                 }
 
@@ -1468,7 +1481,7 @@
                         const q = e.target.value.trim();
                         debounceTimer = setTimeout(() => {
                             performSearch(q);
-                        }, 150);
+                        }, 100);
                     });
 
                     searchInput.addEventListener('keydown', (e) => {

@@ -2332,10 +2332,10 @@ def api_search_tickets(request):
             Q(category__category_name__icontains=query) |
             Q(assigned_to__username__icontains=query) |
             Q(assigned_to__profile__full_name__icontains=query)
-        ).select_related('status', 'category', 'assigned_to', 'priority').order_by('-updated_at')[:15]
+        ).select_related('status', 'category', 'assigned_to', 'assigned_to__profile', 'priority').order_by('-updated_at')[:15]
     else:
         # Recently updated tickets
-        tickets_qs = Ticket.objects.select_related('status', 'category', 'assigned_to', 'priority').order_by('-updated_at')[:8]
+        tickets_qs = Ticket.objects.select_related('status', 'category', 'assigned_to', 'assigned_to__profile', 'priority').order_by('-updated_at')[:8]
 
     team_setting = TeamSetting.get_settings()
     team_name = team_setting.name
