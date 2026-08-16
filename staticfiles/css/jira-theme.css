@@ -4606,4 +4606,78 @@ textarea.form-control,
     font-size: 13px;
 }
 
+/* Floating Column Context Menu */
+.column-context-menu {
+    background: #ffffff;
+    border: 1px solid var(--jira-border, #dfe1e6);
+    border-radius: 8px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+    font-family: inherit;
+}
+
+[data-theme="dark"] .column-context-menu {
+    background: #1e1e22;
+    border-color: #38383e;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55);
+}
+
+.col-context-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 8px 14px;
+    background: transparent;
+    border: none;
+    font-size: 13px;
+    color: var(--jira-text-dark, #172b4d);
+    cursor: pointer;
+    text-align: left;
+    font-weight: 500;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+[data-theme="dark"] .col-context-item {
+    color: #cecfd2;
+}
+
+.col-context-item:hover {
+    background: rgba(9, 30, 66, 0.08);
+}
+
+[data-theme="dark"] .col-context-item:hover {
+    background: #2a2a2e;
+    color: #ffffff;
+}
+
+.col-context-divider {
+    height: 1px;
+    background: var(--jira-border, #dfe1e6);
+    margin: 4px 0;
+}
+
+[data-theme="dark"] .col-context-divider {
+    background: #38383e;
+}
+
+.col-context-delete {
+    color: #de350b;
+    font-weight: 600;
+}
+
+[data-theme="dark"] .col-context-delete {
+    color: #ff5630;
+}
+
+.col-context-delete:hover {
+    background: rgba(222, 53, 11, 0.1) !important;
+    color: #bf2600 !important;
+}
+
+[data-theme="dark"] .col-context-delete:hover {
+    background: rgba(255, 86, 48, 0.15) !important;
+    color: #ff7452 !important;
+}
+
+
 

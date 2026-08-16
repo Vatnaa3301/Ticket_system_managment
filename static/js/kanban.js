@@ -1196,22 +1196,46 @@ document.addEventListener('DOMContentLoaded', () => {
     window._currentColumnStatusName = '';
 
     window.openColumnContextMenu = function(e, btn, statusId, statusName) {
-        e.stopPropagation();
+        if (e) {
+            e.stopPropagation();
+            e.preventDefault();
+        }
         window._currentColumnStatusId = statusId;
         window._currentColumnStatusName = statusName;
 
         const menu = document.getElementById('columnContextMenu');
         if (!menu) return;
 
-        const rect = btn.getBoundingClientRect();
+        // Toggle if already open on same button
+        if (menu.style.display === 'block' && menu._openBtn === btn) {
+            menu.style.display = 'none';
+            menu._openBtn = null;
+            return;
+        }
+        menu._openBtn = btn;
+
+        menu.style.visibility = 'hidden';
         menu.style.display = 'block';
-        menu.style.top = (rect.bottom + 4) + 'px';
-        menu.style.left = (rect.right - 180) + 'px';
+
+        const rect = btn.getBoundingClientRect();
+        let top = rect.bottom + 6;
+        let left = rect.right - menu.offsetWidth;
+        if (left < 8) left = 8;
+        if (left + menu.offsetWidth > window.innerWidth - 8) left = window.innerWidth - menu.offsetWidth - 8;
+        if (top + menu.offsetHeight > window.innerHeight - 8) top = rect.top - menu.offsetHeight - 6;
+
+        menu.style.top = top + 'px';
+        menu.style.left = left + 'px';
+        menu.style.visibility = 'visible';
     };
 
     window.moveColumnAction = async function(direction) {
         const statusId = window._currentColumnStatusId;
         if (!statusId) return;
+
+        const menu = document.getElementById('columnContextMenu');
+        if (menu) menu.style.display = 'none';
+
         try {
             const res = await fetch(`/api/statuses/${statusId}/move/`, {
                 method: 'POST',
@@ -1226,6 +1250,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (err) {
             console.error(err);
+            alert('Network error while moving column.');
         }
     };
 
@@ -1234,7 +1259,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const statusName = window._currentColumnStatusName || 'this status';
         if (!statusId) return;
 
-        if (!confirm(`Are you sure you want to delete status "${statusName}"?`)) return;
+        const menu = document.getElementById('columnContextMenu');
+        if (menu) menu.style.display = 'none';
+
+        if (!confirm(`Are you sure you want to delete status "${statusName}"?\nExisting tickets in this column will be moved to an adjacent column.`)) return;
 
         try {
             const res = await fetch(`/api/statuses/${statusId}/delete/`, {
@@ -1257,6 +1285,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const menu = document.getElementById('columnContextMenu');
         if (menu && !e.target.closest('#columnContextMenu') && !e.target.closest('.col-menu-btn')) {
             menu.style.display = 'none';
+            menu._openBtn = null;
         }
     });
 

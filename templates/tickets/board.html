@@ -194,17 +194,17 @@
 </div>
 
 <!-- FLOATING COLUMN CONTEXT MENU -->
-<div id="columnContextMenu" class="status-dropdown-menu" style="display:none; position:fixed; z-index:99999; min-width:180px; padding:6px 0;">
-    <button type="button" class="dropdown-item-btn" onclick="moveColumnAction('left')" style="display:flex; align-items:center; gap:10px; width:100%; padding:8px 14px; background:transparent; border:none; font-size:13px; cursor:pointer; text-align:left; font-weight:500;">
+<div id="columnContextMenu" class="column-context-menu" style="display:none; position:fixed; z-index:999999; min-width:180px; padding:6px 0;">
+    <button type="button" class="col-context-item" onclick="moveColumnAction('left')">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
         <span>Move column left</span>
     </button>
-    <button type="button" class="dropdown-item-btn" onclick="moveColumnAction('right')" style="display:flex; align-items:center; gap:10px; width:100%; padding:8px 14px; background:transparent; border:none; font-size:13px; cursor:pointer; text-align:left; font-weight:500;">
+    <button type="button" class="col-context-item" onclick="moveColumnAction('right')">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
         <span>Move column right</span>
     </button>
-    <div style="height:1px; background:var(--jira-border); margin:6px 0;"></div>
-    <button type="button" class="dropdown-item-btn logout-btn" onclick="deleteColumnAction()" style="display:flex; align-items:center; gap:10px; width:100%; padding:8px 14px; background:transparent; border:none; font-size:13px; cursor:pointer; text-align:left; font-weight:600;">
+    <div class="col-context-divider"></div>
+    <button type="button" class="col-context-item col-context-delete" onclick="deleteColumnAction()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
         <span>Delete status</span>
     </button>

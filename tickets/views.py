@@ -1408,6 +1408,12 @@ def api_move_status(request, status_id):
         direction = data.get('direction', '')
 
         all_statuses = list(TicketStatus.objects.all().order_by('order', 'status_id'))
+        
+        # Ensure distinct clean sequential ordering
+        for i, s in enumerate(all_statuses):
+            s.order = i + 1
+            s.save(update_fields=['order'])
+
         idx = None
         for i, s in enumerate(all_statuses):
             if s.status_id == status.status_id:
@@ -1420,13 +1426,13 @@ def api_move_status(request, status_id):
         if direction == 'left' and idx > 0:
             swap_target = all_statuses[idx - 1]
             status.order, swap_target.order = swap_target.order, status.order
-            status.save()
-            swap_target.save()
+            status.save(update_fields=['order'])
+            swap_target.save(update_fields=['order'])
         elif direction == 'right' and idx < (len(all_statuses) - 1):
             swap_target = all_statuses[idx + 1]
             status.order, swap_target.order = swap_target.order, status.order
-            status.save()
-            swap_target.save()
+            status.save(update_fields=['order'])
+            swap_target.save(update_fields=['order'])
 
         bump_board_version()
         return JsonResponse({'success': True})
@@ -1440,7 +1446,11 @@ def api_delete_status(request, status_id):
     """Delete a ticket status column and reassign existing tickets to default status."""
     status = get_object_or_404(TicketStatus, status_id=status_id)
     try:
-        fallback_status = TicketStatus.objects.exclude(status_id=status_id).order_by('order').first()
+        remaining_count = TicketStatus.objects.exclude(status_id=status_id).count()
+        if remaining_count == 0:
+            return JsonResponse({'success': False, 'error': 'Cannot delete the only remaining status column.'}, status=400)
+
+        fallback_status = TicketStatus.objects.exclude(status_id=status_id).order_by('order', 'status_id').first()
         if fallback_status:
             Ticket.objects.filter(status=status).update(status=fallback_status)
         status.delete()
