@@ -113,6 +113,13 @@ class Ticket(models.Model):
 
     class Meta:
         db_table = 'tickets'
+        indexes = [
+            models.Index(fields=['status', 'assigned_to'], name='idx_ticket_status_assignee'),
+            models.Index(fields=['updated_at'], name='idx_ticket_updated_at'),
+            models.Index(fields=['created_at'], name='idx_ticket_created_at'),
+            models.Index(fields=['due_date'], name='idx_ticket_due_date'),
+            models.Index(fields=['status', 'due_date'], name='idx_ticket_status_due'),
+        ]
 
     def __str__(self):
         return f"{self.ticket_code} - {self.subject}"

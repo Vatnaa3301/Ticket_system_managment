@@ -569,7 +569,10 @@ def get_board_columns_data(request):
     prio_filter = request.GET.get('priority', '')
     assignee_filter = request.GET.get('assignee', '')
 
-    tickets_qs = Ticket.objects.select_related('status', 'priority', 'category', 'user', 'assigned_to').all()
+    tickets_qs = Ticket.objects.select_related(
+        'status', 'priority', 'category', 'user',
+        'assigned_to', 'assigned_to__profile'
+    ).all()
 
     if q:
         tickets_qs = tickets_qs.filter(Q(subject__icontains=q) | Q(ticket_code__icontains=q) | Q(description__icontains=q))
@@ -583,9 +586,18 @@ def get_board_columns_data(request):
     today = timezone.localdate()
     one_day_later = today + timedelta(days=1)
 
+    # Pre-group tickets by status_id in memory (single DB query, no per-column query)
+    all_tickets = list(tickets_qs)
+    tickets_by_status = {}
+    for t in all_tickets:
+        sid = t.status_id
+        if sid not in tickets_by_status:
+            tickets_by_status[sid] = []
+        tickets_by_status[sid].append(t)
+
     columns = []
     for st in statuses:
-        st_tickets = tickets_qs.filter(status=st)
+        st_tickets = tickets_by_status.get(st.status_id, [])
         ticket_items = []
         for t in st_tickets:
             assigned = None
@@ -625,7 +637,9 @@ def get_board_columns_data(request):
             'status_id': st.status_id,
             'status_name': st.status_name,
             'count': len(ticket_items),
-            'tickets': ticket_items
+            'tickets': ticket_items,
+            'ticket_objects': st_tickets,  # Pass model instances for template rendering
+            'status_obj': st,  # Pass status model instance
         })
 
     return {
@@ -646,16 +660,12 @@ def board_view(request):
     """Render Jira-inspired Kanban board view."""
     data = get_board_columns_data(request)
     
-    # Adapt to template expectations
+    # Use pre-fetched ticket model instances directly — no second DB query
     board_columns = []
     for col_info in data['columns']:
-        # Fetch corresponding status model
-        st_obj = next((s for s in data['statuses'] if s.status_id == col_info['status_id']), None)
-        # Fetch ticket model instances matching the filtered query
-        tickets_in_col = Ticket.objects.filter(ticket_id__in=[ti['ticket_id'] for ti in col_info['tickets']]).select_related('status', 'priority', 'category', 'user', 'assigned_to')
         board_columns.append({
-            'status': st_obj,
-            'tickets': tickets_in_col,
+            'status': col_info['status_obj'],
+            'tickets': col_info['ticket_objects'],
             'count': col_info['count']
         })
 
@@ -698,16 +708,22 @@ def for_you_view(request):
     if active_tab not in ['assigned', 'worked_on', 'viewed']:
         active_tab = 'assigned'
     
-    # Query datasets
-    assigned_qs = Ticket.objects.filter(assigned_to=request.user).select_related('status', 'priority', 'category', 'user', 'assigned_to').order_by('-created_at')
-    worked_on_qs = Ticket.objects.filter(
+    # Lightweight count queries — only count, don't fetch full objects for inactive tabs
+    assigned_count = Ticket.objects.filter(assigned_to=request.user).count()
+    worked_on_count = Ticket.objects.filter(
         Q(user=request.user) | Q(assigned_to=request.user) | Q(comments__user=request.user)
-    ).distinct().select_related('status', 'priority', 'category', 'user', 'assigned_to').order_by('-created_at')
-    all_tickets_qs = Ticket.objects.select_related('status', 'priority', 'category', 'user', 'assigned_to').order_by('-created_at')
+    ).distinct().count()
+    viewed_count = Ticket.objects.count()
 
-    assigned_count = assigned_qs.count()
-    worked_on_count = worked_on_qs.count()
-    viewed_count = all_tickets_qs.count()
+    # Only build the full queryset for the active tab
+    if active_tab == 'assigned':
+        assigned_qs = Ticket.objects.filter(assigned_to=request.user).select_related('status', 'priority', 'category', 'user', 'assigned_to').order_by('-created_at')
+    elif active_tab == 'worked_on':
+        worked_on_qs = Ticket.objects.filter(
+            Q(user=request.user) | Q(assigned_to=request.user) | Q(comments__user=request.user)
+        ).distinct().select_related('status', 'priority', 'category', 'user', 'assigned_to').order_by('-created_at')
+    else:
+        all_tickets_qs = Ticket.objects.select_related('status', 'priority', 'category', 'user', 'assigned_to').order_by('-created_at')
 
     def get_time_info(dt):
         if not dt:
@@ -856,7 +872,7 @@ def for_you_view(request):
 @login_required
 def list_view(request):
     """Render structured table view of tickets."""
-    tickets = Ticket.objects.select_related('status', 'priority', 'category', 'user', 'assigned_to').all().order_by('-created_at')
+    tickets = Ticket.objects.select_related('status', 'priority', 'category', 'user', 'assigned_to', 'assigned_to__profile').all().order_by('-created_at')
     priorities = Priority.objects.all().order_by('priority_id')
     categories = TicketCategory.objects.all()
     statuses = TicketStatus.objects.all().order_by('order')
@@ -1247,44 +1263,47 @@ def api_board_sync(request):
         client_ver = str(request.GET.get('ver', '0')).strip()
 
         from django.db.models import Max
-        latest_ticket = Ticket.objects.order_by('-updated_at').first()
-        ticket_count = Ticket.objects.count()
-        max_id = Ticket.objects.aggregate(max_id=Max('ticket_id'))['max_id'] or 0
-        if latest_ticket and latest_ticket.updated_at:
-            current_ver = f"{ticket_count}_{max_id}_{int(latest_ticket.updated_at.timestamp() * 1000)}"
+        # Fix 3: Single aggregate query instead of 3 separate queries
+        ver_data = Ticket.objects.aggregate(
+            ticket_count=Count('ticket_id'),
+            max_id=Max('ticket_id'),
+            latest_update=Max('updated_at')
+        )
+        ticket_count = ver_data['ticket_count'] or 0
+        max_id = ver_data['max_id'] or 0
+        latest_update = ver_data['latest_update']
+        if latest_update:
+            current_ver = f"{ticket_count}_{max_id}_{int(latest_update.timestamp() * 1000)}"
         else:
             current_ver = f"{ticket_count}_{max_id}_0"
 
         if client_ver == current_ver:
             return JsonResponse({'updated': False, 'ver': current_ver})
 
-
-        tickets = Ticket.objects.select_related('status', 'priority', 'assigned_to', 'assigned_to__profile').all()
+        tickets = list(Ticket.objects.select_related('status', 'priority', 'assigned_to', 'assigned_to__profile').all())
         tickets_data = []
+        # Fix 2: Compute column counts in-memory from the same query instead of N+1
+        counts = {}
         for t in tickets:
             prof = getattr(t.assigned_to, 'profile', None) if t.assigned_to else None
+            sid = t.status.status_id if t.status else None
+            counts[sid] = counts.get(sid, 0) + 1
             tickets_data.append({
                 'ticket_id': t.ticket_id,
                 'ticket_code': t.ticket_code,
                 'subject': t.subject,
-                'status_id': t.status.status_id if t.status else None,
+                'status_id': sid,
                 'status_name': t.status.status_name if t.status else '',
                 'priority_id': t.priority.priority_id if t.priority else None,
                 'priority_name': t.priority.priority_name if t.priority else '',
                 'due_date': safe_format_date(t.due_date, '%Y-%m-%d'),
                 'due_date_formatted': safe_format_date(t.due_date, '%d %b %Y'),
-
                 'is_due_soon': t.is_due_soon,
                 'assignee': t.assigned_to.username if t.assigned_to else '',
                 'assignee_initials': (t.assigned_to.username[:2].upper()) if t.assigned_to else '',
                 'assignee_color': prof.avatar_color if prof else '#0052cc',
                 'assignee_image': prof.profile_image if prof and prof.profile_image else '',
             })
-
-        statuses = TicketStatus.objects.all()
-        counts = {}
-        for st in statuses:
-            counts[st.status_id] = Ticket.objects.filter(status=st).count()
 
         return JsonResponse({
             'updated': True,
@@ -2166,6 +2185,10 @@ def api_update_team_name(request):
         team_setting.name = new_name
         team_setting.save()
 
+        # Invalidate cached team setting so context processor picks up the new name
+        from django.core.cache import cache
+        cache.delete('global_team_setting')
+
         # Broadcast update to all connected clients
         try:
             pusher_client.trigger('team_management', 'team-updated', {
@@ -2230,6 +2253,10 @@ def api_update_team_icon(request):
             if icon_bg_color:
                 team_setting.icon_bg_color = icon_bg_color
             team_setting.save()
+
+        # Invalidate cached team setting so context processor picks up new icon
+        from django.core.cache import cache
+        cache.delete('global_team_setting')
 
         # Broadcast update
         try:

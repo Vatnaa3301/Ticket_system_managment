@@ -1,8 +1,17 @@
+from django.core.cache import cache
 from .models import TeamSetting
+
+# Cache key for team settings — avoids a DB query on every request
+_TEAM_SETTING_CACHE_KEY = 'global_team_setting'
 
 def team_context(request):
     """Context processor providing global team settings and admin role state to all templates."""
-    team_setting = TeamSetting.get_settings()
+    # Cache TeamSetting for 60 seconds to avoid get_or_create on every request
+    team_setting = cache.get(_TEAM_SETTING_CACHE_KEY)
+    if team_setting is None:
+        team_setting = TeamSetting.get_settings()
+        cache.set(_TEAM_SETTING_CACHE_KEY, team_setting, 60)
+
     is_admin = False
     if request.user.is_authenticated:
         profile = getattr(request.user, 'profile', None)
