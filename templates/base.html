@@ -1,7 +1,7 @@
 {% load static %}
 {% load team_tags %}
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -30,13 +30,13 @@
             };
 
             window.toggleJiraTheme = function() {
-                const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+                const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
                 const newTheme = (currentTheme === 'dark') ? 'light' : 'dark';
                 window.applyJiraTheme(newTheme);
             };
 
-            // Set initial data-theme attribute immediately to prevent flash
-            const savedTheme = localStorage.getItem('jira_theme') || 'dark';
+            // Set initial data-theme attribute immediately to prevent flash (defaults to light mode)
+            const savedTheme = localStorage.getItem('jira_theme') || 'light';
             document.documentElement.setAttribute('data-theme', savedTheme);
             document.addEventListener('DOMContentLoaded', function() {
                 window.applyJiraTheme(savedTheme);
@@ -657,29 +657,28 @@
         </div>
     </div>
     <!-- SHARED FLOATING CARD CONTEXT MENU (rendered at body level, positioned by JS) -->
-    <div id="cardContextMenu" style="display:none; position:fixed; z-index:9999999; min-width:200px; background:#1e1e22; border:1px solid #3a3a42; border-radius:8px; box-shadow:0 8px 32px rgba(0,0,0,0.5); padding:6px 0; font-size:13px; color:#cecfd2;">
-
+    <div id="cardContextMenu" class="card-context-menu" style="display:none; position:fixed; z-index:9999999; min-width:200px; padding:6px 0;">
         <!-- Edit Ticket Option -->
-        <button type="button" id="cardMenuEdit" onclick="cardMenuEditTicket()" style="display:flex; align-items:center; gap:10px; width:100%; padding:8px 14px; background:transparent; border:none; color:#579dff; font-size:13px; cursor:pointer; text-align:left; font-weight:600;">
+        <button type="button" id="cardMenuEdit" class="card-menu-item card-menu-edit" onclick="cardMenuEditTicket()">
             <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
             <span>Edit Ticket</span>
         </button>
-        <div style="height:1px; background:#3a3a42; margin:4px 0;"></div>
+        <div class="card-menu-divider"></div>
         <!-- Change Status section -->
-        <div style="padding:6px 14px 4px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.6px; color:#626f86;">Change Status</div>
+        <div class="card-menu-header">Change Status</div>
         <div id="cardMenuStatuses"></div>
         <!-- Divider -->
-        <div style="height:1px; background:#3a3a42; margin:6px 0;"></div>
+        <div class="card-menu-divider"></div>
         <!-- Delete -->
-        <button type="button" id="cardMenuDelete" onclick="cardMenuDeleteTicket()" style="display:flex; align-items:center; gap:10px; width:100%; padding:8px 14px; background:transparent; border:none; color:#ff5630; font-size:13px; cursor:pointer; text-align:left;">
+        <button type="button" id="cardMenuDelete" class="card-menu-item card-menu-delete" onclick="cardMenuDeleteTicket()">
             <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
             <span>Delete</span>
         </button>
     </div>
 
     <!-- SHARED FLOATING PRIORITY PICKER (rendered at body level, positioned by JS) -->
-    <div id="priorityPickerMenu" style="display:none; position:fixed; z-index:99999; min-width:170px; background:#1e1e22; border:1px solid #3a3a42; border-radius:8px; box-shadow:0 8px 32px rgba(0,0,0,0.5); padding:6px 0; font-size:13px; color:#cecfd2;">
-        <div style="padding:6px 14px 4px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.6px; color:#626f86;">Priority</div>
+    <div id="priorityPickerMenu" class="card-context-menu" style="display:none; position:fixed; z-index:99999; min-width:170px; padding:6px 0;">
+        <div class="card-menu-header">Priority</div>
         <div id="priorityPickerList"></div>
     </div>
 

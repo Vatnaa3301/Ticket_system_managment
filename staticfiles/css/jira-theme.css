@@ -4733,5 +4733,191 @@ textarea.form-control,
     stroke: #ff7452 !important;
 }
 
+/* ==========================================================================
+   Shared Card Context Menu & Priority Picker (Light & Dark Themes)
+   ========================================================================== */
+.card-context-menu {
+    background: var(--jira-card-bg, #ffffff);
+    border: 1px solid var(--jira-border, #dfe1e6);
+    border-radius: 8px;
+    box-shadow: 0 8px 30px rgba(9, 30, 66, 0.2);
+    font-family: inherit;
+    overflow: hidden;
+}
+
+[data-theme="light"] .card-context-menu {
+    background: #ffffff !important;
+    border: 1px solid #dfe1e6 !important;
+    box-shadow: 0 8px 30px rgba(9, 30, 66, 0.15) !important;
+}
+
+[data-theme="dark"] .card-context-menu {
+    background: #1e1e22 !important;
+    border: 1px solid #38383e !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6) !important;
+}
+
+.card-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 8px 14px;
+    background: transparent;
+    border: none;
+    font-size: 13px;
+    cursor: pointer;
+    text-align: left;
+    font-weight: 500;
+    transition: background 0.12s ease, color 0.12s ease;
+}
+
+[data-theme="light"] .card-menu-item {
+    color: #172b4d !important;
+}
+[data-theme="dark"] .card-menu-item {
+    color: #cecfd2 !important;
+}
+
+[data-theme="light"] .card-menu-item:hover {
+    background: #ebecf0 !important;
+}
+[data-theme="dark"] .card-menu-item:hover {
+    background: #2c2c32 !important;
+    color: #ffffff !important;
+}
+
+/* Edit Option */
+[data-theme="light"] .card-menu-edit {
+    color: #0c66e4 !important;
+    font-weight: 600 !important;
+}
+[data-theme="light"] .card-menu-edit svg {
+    stroke: #0c66e4 !important;
+}
+[data-theme="light"] .card-menu-edit:hover {
+    background: #deebff !important;
+    color: #0055cc !important;
+}
+
+[data-theme="dark"] .card-menu-edit {
+    color: #579dff !important;
+    font-weight: 600 !important;
+}
+[data-theme="dark"] .card-menu-edit svg {
+    stroke: #579dff !important;
+}
+[data-theme="dark"] .card-menu-edit:hover {
+    background: rgba(87, 157, 255, 0.15) !important;
+    color: #85b8ff !important;
+}
+
+/* Delete Option */
+[data-theme="light"] .card-menu-delete {
+    color: #de350b !important;
+}
+[data-theme="light"] .card-menu-delete svg {
+    stroke: #de350b !important;
+}
+[data-theme="light"] .card-menu-delete:hover {
+    background: #ffebe6 !important;
+    color: #bf2600 !important;
+}
+
+[data-theme="dark"] .card-menu-delete {
+    color: #ff5630 !important;
+}
+[data-theme="dark"] .card-menu-delete svg {
+    stroke: #ff5630 !important;
+}
+[data-theme="dark"] .card-menu-delete:hover {
+    background: rgba(255, 86, 48, 0.18) !important;
+    color: #ff7452 !important;
+}
+
+/* Header & Divider */
+.card-menu-header {
+    padding: 6px 14px 4px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+}
+[data-theme="light"] .card-menu-header {
+    color: #626f86 !important;
+}
+[data-theme="dark"] .card-menu-header {
+    color: #8c9bab !important;
+}
+
+.card-menu-divider {
+    height: 1px;
+    margin: 4px 0;
+}
+[data-theme="light"] .card-menu-divider {
+    background: #ebecf0 !important;
+}
+[data-theme="dark"] .card-menu-divider {
+    background: #38383e !important;
+}
+
+/* Status Item in Card Menu */
+.card-menu-status-item, .card-priority-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 7px 14px;
+    background: transparent;
+    border: none;
+    font-size: 13px;
+    cursor: pointer;
+    text-align: left;
+    font-weight: 400;
+    transition: background 0.12s ease, color 0.12s ease;
+}
+
+.card-menu-status-item .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+}
+
+[data-theme="light"] .card-menu-status-item,
+[data-theme="light"] .card-priority-item {
+    color: #172b4d !important;
+}
+[data-theme="dark"] .card-menu-status-item,
+[data-theme="dark"] .card-priority-item {
+    color: #cecfd2 !important;
+}
+
+[data-theme="light"] .card-menu-status-item:hover,
+[data-theme="light"] .card-priority-item:hover {
+    background: #ebecf0 !important;
+}
+[data-theme="dark"] .card-menu-status-item:hover,
+[data-theme="dark"] .card-priority-item:hover {
+    background: #2c2c32 !important;
+    color: #ffffff !important;
+}
+
+[data-theme="light"] .card-menu-status-item.active,
+[data-theme="light"] .card-priority-item.active {
+    background: #deebff !important;
+    color: #0c66e4 !important;
+    font-weight: 700 !important;
+}
+
+[data-theme="dark"] .card-menu-status-item.active,
+[data-theme="dark"] .card-priority-item.active {
+    background: rgba(87, 157, 255, 0.16) !important;
+    color: #579dff !important;
+    font-weight: 700 !important;
+}
+
+
 
 

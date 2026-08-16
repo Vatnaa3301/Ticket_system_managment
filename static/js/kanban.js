@@ -720,7 +720,7 @@ window.renderAttachments = function() {
 
 // ---------------- DARK / LIGHT THEME TOGGLE ----------------
 (function initJiraThemeToggle() {
-    const activeTheme = localStorage.getItem('jira_theme') || 'dark';
+    const activeTheme = localStorage.getItem('jira_theme') || 'light';
     if (typeof window.applyJiraTheme === 'function') {
         window.applyJiraTheme(activeTheme);
     } else {
@@ -1930,18 +1930,9 @@ function buildCardMenuStatuses(currentStatusId, isModal) {
 
         const btn = document.createElement('button');
         btn.type = 'button';
-        btn.style.cssText = `
-            display:flex; align-items:center; gap:10px;
-            width:100%; padding:7px 14px; background:${isActive ? 'rgba(87,157,255,0.12)' : 'transparent'};
-            border:none; color:${isActive ? '#579dff' : '#cecfd2'}; font-size:13px;
-            font-weight:${isActive ? '700' : '400'};
-            cursor:pointer; text-align:left;
-        `;
-        btn.onmouseover = () => { if (!isActive) btn.style.background = 'rgba(255,255,255,0.06)'; };
-        btn.onmouseout = () => { if (!isActive) btn.style.background = 'transparent'; };
-
+        btn.className = `card-menu-status-item ${isActive ? 'active' : ''}`;
         btn.innerHTML = `
-            <span style="width:8px;height:8px;border-radius:50%;background:${dotColor};display:inline-block;flex-shrink:0;"></span>
+            <span class="status-dot" style="background:${dotColor};"></span>
             <span>${st.name}</span>
         `;
         btn.onclick = () => {
@@ -2315,16 +2306,7 @@ function buildPriorityList(currentPriorityName) {
         const isActive = p.name === currentPriorityName;
         const btn = document.createElement('button');
         btn.type = 'button';
-        btn.style.cssText = `
-            display:flex; align-items:center; gap:10px;
-            width:100%; padding:8px 14px;
-            background:${isActive ? 'rgba(87,157,255,0.12)' : 'transparent'};
-            border:none; color:${isActive ? '#579dff' : '#cecfd2'};
-            font-size:13px; font-weight:${isActive ? '700' : '400'};
-            cursor:pointer; text-align:left;
-        `;
-        btn.onmouseover = () => { if (!isActive) btn.style.background = 'rgba(255,255,255,0.06)'; };
-        btn.onmouseout = () => { if (!isActive) btn.style.background = 'transparent'; };
+        btn.className = `card-priority-item ${isActive ? 'active' : ''}`;
         btn.innerHTML = `${p.icon} <span>${p.name}</span>`;
         btn.onclick = () => {
             closePriorityMenu();

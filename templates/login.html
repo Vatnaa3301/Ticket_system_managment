@@ -1,6 +1,6 @@
 {% load static %}
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -414,7 +414,7 @@
         // Theme Toggle Logic
         const themeBtn = document.getElementById('themeToggleBtn');
         const themeText = document.getElementById('themeToggleText');
-        const savedTheme = localStorage.getItem('jira_theme') || 'dark';
+        const savedTheme = localStorage.getItem('jira_theme') || 'light';
         document.documentElement.setAttribute('data-theme', savedTheme);
         themeText.innerText = savedTheme === 'dark' ? 'Light Mode' : 'Dark Mode';
 
