@@ -1,6 +1,7 @@
 {% extends "base.html" %}
+{% load team_tags %}
 
-{% block title %}For you - Team Vatana Jira{% endblock %}
+{% block title %}For you - {{ team_name }} Jira{% endblock %}
 
 {% block content %}
 <div class="for-you-page-container">
@@ -12,11 +13,11 @@
 
     <div class="recommended-spaces-grid">
         <a href="{% url 'board' %}" class="recommended-space-card">
-            <div class="space-card-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+            <div class="space-card-icon" style="width:36px; height:36px; border-radius:6px; overflow:hidden; display:flex; align-items:center; justify-content:center;">
+                {% render_team_avatar team_icon_type team_icon_value team_initials team_icon_bg_color %}
             </div>
             <div class="space-card-info">
-                <div class="space-card-title">Team Vatana</div>
+                <div class="space-card-title global-team-name-text">{{ team_name }}</div>
                 <div class="space-card-subtitle">Software space</div>
             </div>
         </a>
@@ -61,7 +62,7 @@
                                 <div class="for-you-ticket-details">
                                     <div class="for-you-ticket-title">{{ t.subject }}</div>
                                     <div class="for-you-ticket-meta">
-                                        Feature · {{ t.ticket_code }} · Team Vatana
+                                        Feature · {{ t.ticket_code }} · {{ team_name }}
                                     </div>
                                 </div>
                             </div>

@@ -180,7 +180,7 @@ from django.urls import reverse
 from .models import (
     Ticket, TicketStatus, Priority, TicketCategory, TicketComment,
     TicketLog, TicketAssignment, UserProfile, ServiceRating, SLARule,
-    TicketAttachment, Role
+    TicketAttachment, Role, TeamSetting
 )
 
 def save_file_to_storage(file_obj, subfolder, custom_filename=None):
@@ -777,6 +777,9 @@ def for_you_view(request):
                 })
     elif active_tab == 'worked_on':
         grouped_dict = {g: [] for g in time_groups}
+        team_setting = TeamSetting.get_settings()
+        team_name = team_setting.name
+
         for t in worked_on_qs:
             group_name, time_str = get_time_info(t.created_at)
             cat_name = t.category.category_name if t.category else 'Feature'
@@ -785,7 +788,7 @@ def for_you_view(request):
                 'is_space_or_board': False,
                 'ticket_id': t.ticket_id,
                 'title': t.subject,
-                'subtitle': f"{issue_type} · {t.ticket_code} · Team Vatana",
+                'subtitle': f"{issue_type} · {t.ticket_code} · {team_name}",
                 'time_str': time_str,
                 'user_initials': get_user_initials(request.user),
                 'issue_type': issue_type
@@ -799,10 +802,13 @@ def for_you_view(request):
                     'items': grouped_dict[g]
                 })
     else: # viewed
+        team_setting = TeamSetting.get_settings()
+        team_name = team_setting.name
+
         viewed_items = []
         viewed_items.append({
             'is_space_or_board': True,
-            'title': 'Team Vatana',
+            'title': team_name,
             'subtitle': 'Team-managed software',
             'icon_type': 'space',
             'time_str': '15 minutes ago',
@@ -812,7 +818,7 @@ def for_you_view(request):
         viewed_items.append({
             'is_space_or_board': True,
             'title': 'KAN board',
-            'subtitle': 'Board · Team Vatana',
+            'subtitle': f'Board · {team_name}',
             'icon_type': 'board',
             'time_str': '15 minutes ago',
             'group_name': 'Today',
@@ -827,7 +833,7 @@ def for_you_view(request):
                 'is_space_or_board': False,
                 'ticket_id': t.ticket_id,
                 'title': t.subject,
-                'subtitle': f"{issue_type} · {t.ticket_code} · Team Vatana",
+                'subtitle': f"{issue_type} · {t.ticket_code} · {team_name}",
                 'time_str': time_str,
                 'group_name': group_name,
                 'issue_type': issue_type
@@ -2117,6 +2123,117 @@ def api_update_profile(request):
                 'initials': initials,
                 'user_display': user_display
             }
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
+
+@login_required
+def api_update_team_name(request):
+    """Admin-only API endpoint to update the Team/Space name."""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'POST method required'}, status=405)
+
+    current_profile = getattr(request.user, 'profile', None)
+    is_admin = request.user.is_superuser or (current_profile and current_profile.role and current_profile.role.role_name in ['Admin', 'Administrator'])
+    if not is_admin:
+        return JsonResponse({'success': False, 'error': 'Administrator permissions required to change team name.'}, status=403)
+
+    try:
+        data = json.loads(request.body.decode('utf-8'))
+        new_name = data.get('name', '').strip()
+        if not new_name:
+            return JsonResponse({'success': False, 'error': 'Team name cannot be empty.'}, status=400)
+
+        team_setting = TeamSetting.get_settings()
+        team_setting.name = new_name
+        team_setting.save()
+
+        # Broadcast update to all connected clients
+        try:
+            pusher_client.trigger('team_management', 'team-updated', {
+                'team_name': team_setting.name,
+                'team_initials': team_setting.initials,
+                'team_icon_type': team_setting.icon_type,
+                'team_icon_value': team_setting.icon_value,
+                'team_icon_bg_color': team_setting.icon_bg_color,
+            })
+        except Exception as p_err:
+            print(f"[Pusher] team-updated error: {p_err}")
+
+        return JsonResponse({
+            'success': True,
+            'team_name': team_setting.name,
+            'team_initials': team_setting.initials,
+            'team_icon_type': team_setting.icon_type,
+            'team_icon_value': team_setting.icon_value,
+            'team_icon_bg_color': team_setting.icon_bg_color,
+            'message': 'Team name updated successfully!'
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
+
+@login_required
+def api_update_team_icon(request):
+    """Admin-only API endpoint to update the Team/Space icon (preset key or image upload)."""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'POST method required'}, status=405)
+
+    current_profile = getattr(request.user, 'profile', None)
+    is_admin = request.user.is_superuser or (current_profile and current_profile.role and current_profile.role.role_name in ['Admin', 'Administrator'])
+    if not is_admin:
+        return JsonResponse({'success': False, 'error': 'Administrator permissions required to change team icon.'}, status=403)
+
+    try:
+        team_setting = TeamSetting.get_settings()
+
+        if 'icon_file' in request.FILES:
+            # Custom image upload
+            file_obj = request.FILES['icon_file']
+            file_ext = os.path.splitext(file_obj.name)[1]
+            custom_name = f"team_avatar_{int(timezone.now().timestamp())}{file_ext}"
+            saved_url = save_file_to_storage(file_obj, 'team_avatars', custom_filename=custom_name)
+            team_setting.icon_type = 'custom'
+            team_setting.icon_value = saved_url
+            team_setting.save()
+        else:
+            # Preset or Initials JSON / POST data
+            if request.content_type == 'application/json' or (request.body and not request.POST):
+                data = json.loads(request.body.decode('utf-8'))
+            else:
+                data = request.POST
+
+            icon_type = data.get('icon_type', 'preset')
+            icon_value = data.get('icon_value', 'mountains')
+            icon_bg_color = data.get('icon_bg_color', team_setting.icon_bg_color or '#0052cc')
+
+            team_setting.icon_type = icon_type
+            team_setting.icon_value = icon_value
+            if icon_bg_color:
+                team_setting.icon_bg_color = icon_bg_color
+            team_setting.save()
+
+        # Broadcast update
+        try:
+            pusher_client.trigger('team_management', 'team-updated', {
+                'team_name': team_setting.name,
+                'team_initials': team_setting.initials,
+                'team_icon_type': team_setting.icon_type,
+                'team_icon_value': team_setting.icon_value,
+                'team_icon_bg_color': team_setting.icon_bg_color,
+            })
+        except Exception as p_err:
+            print(f"[Pusher] team-updated error: {p_err}")
+
+        return JsonResponse({
+            'success': True,
+            'team_name': team_setting.name,
+            'team_initials': team_setting.initials,
+            'team_icon_type': team_setting.icon_type,
+            'team_icon_value': team_setting.icon_value,
+            'team_icon_bg_color': team_setting.icon_bg_color,
+            'message': 'Team icon updated successfully!'
         })
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=400)

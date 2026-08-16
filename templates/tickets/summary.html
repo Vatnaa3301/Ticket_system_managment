@@ -1,6 +1,7 @@
 {% extends "base.html" %}
+{% load team_tags %}
 
-{% block title %}Summary - Team Vatana Jira{% endblock %}
+{% block title %}Summary - {{ team_name }} Jira{% endblock %}
 
 {% block content %}
 <!-- SPACE BANNER & TITLE (EXACT JIRA UI) -->
@@ -9,8 +10,17 @@
         <div>
             <div class="space-meta" style="font-size:12px; color:var(--jira-text-muted); margin-bottom:4px;">Spaces</div>
             <div class="space-title-row" style="display:flex; align-items:center; gap:10px;">
-                <div class="space-avatar-icon" style="width:28px; height:28px; background:#0052cc; color:#fff; border-radius:4px; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:12px;">TV</div>
-                <h1 class="space-name" style="font-size:20px; font-weight:700; color:var(--jira-text-dark); margin:0;">Team Vatana</h1>
+                <div class="space-avatar-icon {% if is_admin %}admin-editable-avatar{% endif %}" {% if is_admin %}onclick="openTeamAvatarModal()" title="Change space avatar (Admin)"{% endif %}>
+                    {% render_team_avatar team_icon_type team_icon_value team_initials team_icon_bg_color %}
+                </div>
+                <div class="space-name-container" style="display:inline-flex; align-items:center; gap:6px;">
+                    <h1 class="space-name {% if is_admin %}admin-editable-name{% endif %}" {% if is_admin %}onclick="startEditingTeamName(this)" title="Click to rename space (Admin)"{% endif %}>{{ team_name }}</h1>
+                    {% if is_admin %}
+                    <button type="button" class="btn-edit-space-name" onclick="startEditingTeamName(this.previousElementSibling)" title="Rename space" style="background:none; border:none; color:var(--jira-text-muted); cursor:pointer; padding:2px 4px; display:inline-flex; align-items:center; border-radius:3px;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                    </button>
+                    {% endif %}
+                </div>
                 <span style="font-size:12px; color:var(--jira-text-muted); display:inline-flex; align-items:center; cursor:pointer;" title="Team Space">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                 </span>

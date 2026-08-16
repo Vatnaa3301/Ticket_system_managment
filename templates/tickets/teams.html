@@ -1,14 +1,15 @@
 {% extends "base.html" %}
+{% load team_tags %}
 
-{% block title %}Teams - Team Vatana Jira{% endblock %}
+{% block title %}Teams - {{ team_name }} Jira{% endblock %}
 
 {% block content %}
 <div class="teams-page-container">
     <!-- PAGE HEADER -->
     <div class="teams-page-header">
         <div>
-            <h1 class="teams-heading">Team Vatana Members</h1>
-            <p class="teams-subheading">Manage team members, roles, and permissions across Team Vatana.</p>
+            <h1 class="teams-heading"><span class="global-team-name-text">{{ team_name }}</span> Members</h1>
+            <p class="teams-subheading">Manage team members, roles, and permissions across <span class="global-team-name-text">{{ team_name }}</span>.</p>
         </div>
         {% if is_admin %}
         <button type="button" class="btn-primary" onclick="openAddUserModal()" style="height:38px; padding:0 18px; display:inline-flex; align-items:center; gap:8px; background:#0052cc; font-weight:600; border-radius:4px;">
@@ -215,7 +216,8 @@
 
     // Real-Time Remove Member function for Admin
     window.removeMember = async function(userId, name) {
-        if (!confirm(`Are you sure you want to remove ${name} from Team Vatana?`)) return;
+        const currentTeamName = (window.CURRENT_TEAM && window.CURRENT_TEAM.name) ? window.CURRENT_TEAM.name : 'the team';
+        if (!confirm(`Are you sure you want to remove ${name} from ${currentTeamName}?`)) return;
         try {
             const res = await fetch(`/api/users/${userId}/remove/`, {
                 method: 'POST',

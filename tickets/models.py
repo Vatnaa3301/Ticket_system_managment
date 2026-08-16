@@ -251,3 +251,41 @@ class Report(models.Model):
 
     def __str__(self):
         return f"Report {self.report_type} generated at {self.generated_at}"
+
+
+class TeamSetting(models.Model):
+    name = models.CharField(max_length=100, default='Team Vatana')
+    icon_type = models.CharField(max_length=20, default='preset')  # 'preset', 'custom', 'initials'
+    icon_value = models.CharField(max_length=255, default='mountains')  # preset key or uploaded file path
+    icon_bg_color = models.CharField(max_length=50, default='#0052cc')
+    description = models.TextField(blank=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'team_settings'
+        verbose_name = 'Team Setting'
+        verbose_name_plural = 'Team Settings'
+
+    @classmethod
+    def get_settings(cls):
+        setting, _ = cls.objects.get_or_create(id=1, defaults={
+            'name': 'Team Vatana',
+            'icon_type': 'preset',
+            'icon_value': 'mountains',
+            'icon_bg_color': '#0052cc'
+        })
+        return setting
+
+    @property
+    def initials(self):
+        words = (self.name or 'TV').strip().split()
+        if len(words) >= 2:
+            return (words[0][0] + words[1][0]).upper()
+        elif len(words) == 1 and len(words[0]) >= 2:
+            return words[0][:2].upper()
+        elif len(words) == 1 and len(words[0]) == 1:
+            return words[0][0].upper()
+        return 'TV'
+
+    def __str__(self):
+        return self.name

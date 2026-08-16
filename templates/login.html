@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sign In - Team Vatana Jira</title>
+    <title>Sign In - {{ team_name }} Jira</title>
     <link rel="stylesheet" href="{% static 'css/jira-theme.css' %}">
     <style>
         :root {
@@ -247,7 +247,7 @@
                     <div class="auth-brand-icon">J</div>
                     <span class="auth-brand-title">Jira</span>
                 </a>
-                <p class="auth-subtitle">Team Vatana Ticket System</p>
+                <p class="auth-subtitle">{{ team_name }} Ticket System</p>
             </div>
 
             <!-- VERIFICATION SENT CARD -->
@@ -386,7 +386,7 @@
             {% endif %}
 
             <div class="auth-footer">
-                <p>&copy; 2026 Team Vatana Jira System. All rights reserved.</p>
+                <p>&copy; 2026 {{ team_name }} Jira System. All rights reserved.</p>
             </div>
         </div>
     </div>
