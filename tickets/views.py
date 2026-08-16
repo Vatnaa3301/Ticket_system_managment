@@ -689,6 +689,16 @@ def api_board_data(request):
     """API endpoint to fetch live board columns JSON for smooth skeleton transitions and live filters."""
     try:
         data = get_board_columns_data(request)
+        # Clean columns so they are 100% JSON serializable
+        clean_columns = []
+        for col in data['columns']:
+            clean_columns.append({
+                'status_id': col['status_id'],
+                'status_name': col['status_name'],
+                'count': col['count'],
+                'tickets': col['tickets'],
+            })
+        data['columns'] = clean_columns
         # Serialize statuses, categories, priorities for client if needed
         data['statuses'] = [{'status_id': s.status_id, 'status_name': s.status_name} for s in data['statuses']]
         data['categories'] = [{'category_id': c.category_id, 'category_name': c.category_name} for c in data['categories']]

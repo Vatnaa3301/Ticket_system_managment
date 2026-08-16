@@ -275,21 +275,22 @@ function attachBoardCardEvents() {
 async function fetchBoardData(pushUrl = true) {
     showBoardSkeleton();
 
-    const form = document.querySelector('.board-toolbar form');
-    const params = new URLSearchParams();
+    const qInput = document.getElementById('boardSearchInput');
+    const catSelect = document.getElementById('boardCatFilter');
+    const prioSelect = document.getElementById('boardPrioFilter');
+    const assigneeSelect = document.getElementById('boardAssigneeFilter');
 
-    if (form) {
-        const formData = new FormData(form);
-        for (const [key, val] of formData.entries()) {
-            if (val) params.append(key, val);
-        }
-    }
+    const params = new URLSearchParams();
+    if (qInput && qInput.value.trim()) params.append('q', qInput.value.trim());
+    if (catSelect && catSelect.value) params.append('category', catSelect.value);
+    if (prioSelect && prioSelect.value) params.append('priority', prioSelect.value);
+    if (assigneeSelect && assigneeSelect.value) params.append('assignee', assigneeSelect.value);
 
     const queryString = params.toString();
     const apiUrl = '/api/board/data/' + (queryString ? '?' + queryString : '');
     const pageUrl = window.location.pathname + (queryString ? '?' + queryString : '');
 
-    if (pushUrl) {
+    if (pushUrl && window.history && window.history.pushState) {
         window.history.pushState({}, '', pageUrl);
     }
 
