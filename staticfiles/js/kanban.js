@@ -1452,9 +1452,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
 
-            // 2. Update column positions or render newly created tickets
+            // 2. Update column positions, priorities, or render newly created tickets
             tickets.forEach(t => {
                 let card = document.querySelector(`.ticket-card[data-ticket-id="${t.ticket_id}"]`);
+                if (t.priority_name) {
+                    if (window.updateCardPriorityRealtime) {
+                        window.updateCardPriorityRealtime(t.ticket_id, t.priority_name, t.priority_id);
+                    }
+                }
                 if (t.status_id) {
                     const targetColumnContainer = document.querySelector(`.column-cards-container[data-status-id="${t.status_id}"]`);
                     if (targetColumnContainer) {
@@ -1559,6 +1564,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 boardChannel.bind('ticket-updated', function() {
                     checkBoardSync();
+                });
+
+                boardChannel.bind('priority-updated', function(data) {
+                    if (!data || !data.ticket_id) return;
+                    if (window.updateCardPriorityRealtime) {
+                        window.updateCardPriorityRealtime(data.ticket_id, data.priority_name, data.priority_id);
+                    }
                 });
             } catch (err) {
                 console.warn('Pusher board sync error:', err);
@@ -2395,35 +2407,8 @@ async function changePriority(ticketId, priorityName) {
         });
         const data = await res.json();
         if (data.success) {
-            // 1. Update card priority button icon + data attributes
-            const cardBtn = document.querySelector(`.card-priority-btn[data-ticket-id="${ticketId}"]`);
-            if (cardBtn) {
-                cardBtn.dataset.priorityName = priorityName;
-                cardBtn.dataset.priorityId = priorityId;
-                cardBtn.innerHTML = getPriorityIcon(priorityName);
-            }
-
-            // 2. Update detail modal priority text (if open)
-            const detailPriority = document.getElementById('detailPriority');
-            if (detailPriority) {
-                const addCommBtn = document.getElementById('addCommentBtn');
-                if (addCommBtn && String(addCommBtn.dataset.ticketId) === String(ticketId)) {
-                    detailPriority.textContent = priorityName;
-                }
-            }
-
-            // 3. Update list-view prio trigger if present
-            const listPrioContainer = document.querySelector(`.prio-dropdown-container[data-ticket-id="${ticketId}"]`);
-            if (listPrioContainer) {
-                const trigger = listPrioContainer.querySelector('.prio-select-value');
-                if (trigger) {
-                    const pConf = PRIORITY_CONFIGS.find(p => p.name === priorityName);
-                    trigger.innerHTML = pConf ? `${pConf.icon}<span>${priorityName}</span>` : `<span>${priorityName}</span>`;
-                }
-                // Update selected state in dropdown items
-                listPrioContainer.querySelectorAll('.prio-option-item').forEach(item => {
-                    item.classList.toggle('selected', item.querySelector('span')?.textContent.trim() === priorityName);
-                });
+            if (window.updateCardPriorityRealtime) {
+                window.updateCardPriorityRealtime(ticketId, priorityName, priorityId);
             }
         } else {
             alert('Failed to update priority: ' + (data.error || 'Unknown error'));
@@ -2432,6 +2417,46 @@ async function changePriority(ticketId, priorityName) {
         console.error(err);
     }
 }
+
+window.updateCardPriorityRealtime = function(ticketId, priorityName, priorityId) {
+    if (!ticketId || !priorityName) return;
+
+    // 1. Update all card priority buttons across columns
+    document.querySelectorAll(`.card-priority-btn[data-ticket-id="${ticketId}"]`).forEach(cardBtn => {
+        if (cardBtn.dataset.priorityName !== priorityName) {
+            cardBtn.dataset.priorityName = priorityName;
+            if (priorityId) cardBtn.dataset.priorityId = priorityId;
+            cardBtn.innerHTML = getPriorityIcon(priorityName);
+            
+            // Subtle pulse animation to show real-time update
+            cardBtn.style.transform = 'scale(1.25)';
+            cardBtn.style.transition = 'transform 0.25s ease';
+            setTimeout(() => { cardBtn.style.transform = 'scale(1)'; }, 250);
+        }
+    });
+
+    // 2. Update detail modal priority text (if open for this ticket)
+    const detailPriority = document.getElementById('detailPriority');
+    if (detailPriority) {
+        const addCommBtn = document.getElementById('addCommentBtn');
+        if (addCommBtn && String(addCommBtn.dataset.ticketId) === String(ticketId)) {
+            detailPriority.textContent = priorityName;
+        }
+    }
+
+    // 3. Update list-view priority trigger if present
+    const listPrioContainer = document.querySelector(`.prio-dropdown-container[data-ticket-id="${ticketId}"]`);
+    if (listPrioContainer) {
+        const trigger = listPrioContainer.querySelector('.prio-select-value');
+        if (trigger) {
+            const pConf = PRIORITY_CONFIGS.find(p => p.name === priorityName);
+            trigger.innerHTML = pConf ? `${pConf.icon}<span>${priorityName}</span>` : `<span>${priorityName}</span>`;
+        }
+        listPrioContainer.querySelectorAll('.prio-option-item').forEach(item => {
+            item.classList.toggle('selected', item.querySelector('span')?.textContent.trim() === priorityName);
+        });
+    }
+};
 
 window.openPriorityMenu = openPriorityMenu;
 

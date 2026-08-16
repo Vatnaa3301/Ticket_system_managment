@@ -1341,7 +1341,7 @@ def api_update_status(request, ticket_id):
 @csrf_exempt
 @require_POST
 def api_update_priority(request, ticket_id):
-    """Update ticket priority via AJAX (Inline table change)."""
+    """Update ticket priority via AJAX (Inline table change) and broadcast live update."""
     ticket = get_object_or_404(Ticket, ticket_id=ticket_id)
     if not can_user_edit_ticket(request.user):
         return JsonResponse({'success': False, 'error': 'Permission denied. Your role only has View access and cannot edit tickets.'}, status=403)
@@ -1364,6 +1364,17 @@ def api_update_priority(request, ticket_id):
             old_value=old_priority_name,
             new_value=new_priority.priority_name
         )
+
+        # Broadcast live priority update to all connected users via Pusher WebSockets
+        try:
+            pusher_client.trigger('board_channel', 'priority-updated', {
+                'ticket_id': ticket.ticket_id,
+                'ticket_code': ticket.ticket_code,
+                'priority_id': new_priority.priority_id,
+                'priority_name': new_priority.priority_name
+            })
+        except Exception:
+            pass
 
         return JsonResponse({
             'success': True,
