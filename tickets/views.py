@@ -880,7 +880,7 @@ def list_view(request):
 
 
 def get_summary_metrics_data(request):
-    """Compute all metric numbers, distributions, charts, and activities for Summary dashboard."""
+    """Compute all metric numbers, distributions, charts, and activities for Summary dashboard using optimized SQL aggregations."""
     now = timezone.now()
     seven_days_ago = now - timedelta(days=7)
     today = timezone.localdate()
@@ -922,17 +922,22 @@ def get_summary_metrics_data(request):
         if status_ids:
             tickets_qs = tickets_qs.filter(status_id__in=status_ids)
 
-    # Top KPI Metrics (from filtered tickets)
-    total_tickets = tickets_qs.count()
-    completed_last_7_days = tickets_qs.filter(status__status_name__iexact='done', updated_at__gte=seven_days_ago).count()
-    updated_last_7_days = tickets_qs.filter(updated_at__gte=seven_days_ago).count()
-    created_last_7_days = tickets_qs.filter(created_at__gte=seven_days_ago).count()
-    due_soon_next_7_days = tickets_qs.exclude(status__status_name__in=['Done', 'Closed']).filter(
-        due_date__gte=today,
-        due_date__lte=seven_days_later
-    ).count()
+    # 1. Single aggregate query for all top KPIs
+    kpis = tickets_qs.aggregate(
+        total=Count('ticket_id'),
+        completed_7d=Count('ticket_id', filter=Q(status__status_name__iexact='done', updated_at__gte=seven_days_ago)),
+        updated_7d=Count('ticket_id', filter=Q(updated_at__gte=seven_days_ago)),
+        created_7d=Count('ticket_id', filter=Q(created_at__gte=seven_days_ago)),
+        due_soon_7d=Count('ticket_id', filter=~Q(status__status_name__in=['Done', 'Closed']) & Q(due_date__gte=today, due_date__lte=seven_days_later))
+    )
+    total_tickets = kpis['total'] or 0
+    completed_last_7_days = kpis['completed_7d'] or 0
+    updated_last_7_days = kpis['updated_7d'] or 0
+    created_last_7_days = kpis['created_7d'] or 0
+    due_soon_next_7_days = kpis['due_soon_7d'] or 0
 
-    # Status Overview
+    # 2. Status Overview: Single GROUP BY query
+    status_counts_dict = dict(tickets_qs.values_list('status_id').annotate(c=Count('ticket_id')))
     statuses = TicketStatus.objects.all().order_by('order', 'status_id')
     status_counts = []
     status_colors = {
@@ -944,7 +949,7 @@ def get_summary_metrics_data(request):
     
     total_status_sum = 0
     for st in statuses:
-        c = tickets_qs.filter(status=st).count()
+        c = status_counts_dict.get(st.status_id, 0)
         total_status_sum += c
         s_name_lower = st.status_name.lower().strip()
         color = status_colors.get(s_name_lower, '#6b7280')
@@ -966,20 +971,20 @@ def get_summary_metrics_data(request):
         item['dashoffset'] = round(-accumulated_offset, 2)
         accumulated_offset += dash_len
 
-    # Priority Breakdown (Highest, High, Medium, Low, Lowest, None)
+    # 3. Priority Breakdown: Single GROUP BY query
+    prio_counts_dict = dict(tickets_qs.values_list('priority__priority_name').annotate(c=Count('ticket_id')))
     priority_order = ['Highest', 'High', 'Medium', 'Low', 'Lowest']
     priority_counts = []
     max_prio_count = 1
     for p_name in priority_order:
-        p_obj = Priority.objects.filter(priority_name__iexact=p_name).first()
-        c = tickets_qs.filter(priority=p_obj).count() if p_obj else 0
+        c = prio_counts_dict.get(p_name, 0)
         if c > max_prio_count:
             max_prio_count = c
         priority_counts.append({
             'name': p_name,
             'count': c,
         })
-    none_prio_count = tickets_qs.filter(priority__isnull=True).count()
+    none_prio_count = prio_counts_dict.get(None, 0)
     if none_prio_count > max_prio_count:
         max_prio_count = none_prio_count
     priority_counts.append({
@@ -990,7 +995,8 @@ def get_summary_metrics_data(request):
     for p in priority_counts:
         p['height_px'] = max(int((p['count'] / max_prio_count) * 100), 2) if p['count'] > 0 else 0
 
-    # Types of Work (Category Distribution)
+    # 4. Types of Work (Category Distribution): Single GROUP BY query
+    cat_counts_dict = dict(tickets_qs.values_list('category_id').annotate(c=Count('ticket_id')))
     categories = TicketCategory.objects.all()
     type_counts = []
     cat_icons = {
@@ -1003,7 +1009,7 @@ def get_summary_metrics_data(request):
         'design': '🎨',
     }
     for cat in categories:
-        c = tickets_qs.filter(category=cat).count()
+        c = cat_counts_dict.get(cat.category_id, 0)
         pct = round((c / total_tickets * 100)) if total_tickets > 0 else 0
         cat_lower = cat.category_name.lower().strip()
         icon = cat_icons.get(cat_lower, '📋')
@@ -1015,9 +1021,8 @@ def get_summary_metrics_data(request):
         })
     type_counts.sort(key=lambda x: x['count'], reverse=True)
 
-    # Recent Activity (for filtered tickets)
-    filtered_ticket_ids = list(tickets_qs.values_list('ticket_id', flat=True))
-    recent_logs = TicketLog.objects.filter(ticket_id__in=filtered_ticket_ids).select_related('ticket', 'ticket__status', 'user').order_by('-created_at')[:15]
+    # 5. Recent Activity (for filtered tickets)
+    recent_logs = TicketLog.objects.filter(ticket__in=tickets_qs).select_related('ticket', 'ticket__status', 'user', 'user__profile').order_by('-created_at')[:15]
     activities = []
     for l in recent_logs:
         u = l.user

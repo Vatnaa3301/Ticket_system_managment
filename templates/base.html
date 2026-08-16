@@ -51,6 +51,21 @@
 </head>
 
 <body>
+    <!-- INSTANT TOP NAVIGATION PROGRESS BAR -->
+    <div id="jiraTopProgressBar" class="jira-top-progress-bar"></div>
+    <script>
+        document.addEventListener('click', function(e) {
+            const link = e.target.closest('a');
+            if (link && link.href && !link.target && !link.href.startsWith('javascript:') && !link.href.includes('#') && link.origin === window.location.origin) {
+                const bar = document.getElementById('jiraTopProgressBar');
+                if (bar) bar.classList.add('loading');
+            }
+        });
+        window.addEventListener('pageshow', function() {
+            const bar = document.getElementById('jiraTopProgressBar');
+            if (bar) bar.classList.remove('loading');
+        });
+    </script>
     <!-- TOP HEADER NAVBAR MATCHING JIRA SCREENSHOT -->
     <header class="jira-header">
         <div class="jira-header-left">

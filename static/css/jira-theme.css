@@ -4918,6 +4918,34 @@ textarea.form-control,
     font-weight: 700 !important;
 }
 
+/* ==========================================================================
+   Instant Top Navigation Progress Bar (Zero Freeze Feedback)
+   ========================================================================== */
+.jira-top-progress-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #0c66e4, #579dff, #0052cc);
+    z-index: 99999999;
+    width: 0%;
+    display: none;
+    box-shadow: 0 0 10px rgba(12, 102, 228, 0.6);
+    pointer-events: none;
+}
+
+.jira-top-progress-bar.loading {
+    display: block;
+    animation: topBarLoading 1s infinite ease-in-out;
+}
+
+@keyframes topBarLoading {
+    0% { width: 0%; left: 0; }
+    50% { width: 65%; left: 20%; }
+    100% { width: 100%; left: 0; }
+}
+
+
 
 
 
