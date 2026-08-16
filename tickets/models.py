@@ -284,6 +284,20 @@ class TeamSetting(models.Model):
         return setting
 
     @property
+    def ticket_prefix(self):
+        import re
+        trimmed = (self.name or '').strip()
+        clean = re.sub(r'^(team\s+|space\s+)', '', trimmed, flags=re.IGNORECASE).strip()
+        chars = re.sub(r'[^a-zA-Z0-9]', '', clean)
+        if len(chars) < 2:
+            chars = re.sub(r'[^a-zA-Z0-9]', '', trimmed)
+        if len(chars) >= 3:
+            return chars[:3].upper()
+        elif chars:
+            return chars.upper()
+        return 'KAN'
+
+    @property
     def initials(self):
         words = (self.name or 'TV').strip().split()
         if len(words) >= 2:

@@ -1990,16 +1990,62 @@
                 });
             };
 
-            // Apply Team Name across UI
-            window.applyNewTeamName = function(name, initials) {
-                document.querySelectorAll('.space-name, .global-team-name-text, .teams-heading-name, .space-card-title').forEach(el => {
-                    el.textContent = name;
-                });
-                document.querySelectorAll('.team-avatar-initials').forEach(el => {
-                    el.textContent = (initials || 'TV').substring(0, 2).toUpperCase();
-                });
-                if (document.title.includes(' - Jira')) {
-                    document.title = document.title.replace(/^[^-]+ - /, `${name} - `);
+            // Compute ticket prefix from team name (e.g. Coca -> COC, Love -> LOV, Team Vatana -> VAT)
+            window.computeTicketPrefix = function(name) {
+                if (!name) return 'KAN';
+                var trimmed = name.trim();
+                var clean = trimmed.replace(/^(team\s+|space\s+)/i, '').trim();
+                var chars = clean.replace(/[^a-zA-Z0-9]/g, '');
+                if (chars.length < 2) {
+                    chars = trimmed.replace(/[^a-zA-Z0-9]/g, '');
+                }
+                if (chars.length >= 3) return chars.substring(0, 3).toUpperCase();
+                if (chars.length > 0) return chars.toUpperCase();
+                return 'KAN';
+            };
+
+            // Apply Team Name across UI & Auto-Update Ticket Code Prefix Instantly
+            window.applyNewTeamName = function(name, initials, ticketPrefix) {
+                if (name) {
+                    document.querySelectorAll('.space-name, .global-team-name-text, .teams-heading-name, .space-card-title').forEach(el => {
+                        el.textContent = name;
+                    });
+                    if (document.title.includes(' - Jira')) {
+                        document.title = document.title.replace(/^[^-]+ - /, `${name} - `);
+                    }
+                }
+                if (initials) {
+                    document.querySelectorAll('.team-avatar-initials').forEach(el => {
+                        el.textContent = (initials || 'TV').substring(0, 2).toUpperCase();
+                    });
+                }
+
+                // Instant real-time ticket code prefix update across the whole UI
+                const prefix = ticketPrefix || computeTicketPrefix(name);
+                if (prefix) {
+                    window.CURRENT_TICKET_PREFIX = prefix;
+                    // 1. Kanban cards bottom corner (.key-tag span)
+                    document.querySelectorAll('.key-tag span, .ticket-code-text, .ticket-code-cell, .activity-ticket-code').forEach(el => {
+                        el.textContent = el.textContent.replace(/^[A-Za-z0-9]+-(\d+)/, `${prefix}-$1`);
+                    });
+                    // 2. Ticket Detail Modal header (e.g. KAN-16 -> COC-16)
+                    const detailCode = document.getElementById('detailCode');
+                    if (detailCode) {
+                        detailCode.textContent = detailCode.textContent.replace(/^[A-Za-z0-9]+-(\d+)/, `${prefix}-$1`);
+                    }
+                    // 3. Table cells in list view
+                    document.querySelectorAll('td').forEach(td => {
+                        if (/^[A-Za-z0-9]+-\d+$/.test(td.textContent.trim())) {
+                            td.textContent = td.textContent.trim().replace(/^[A-Za-z0-9]+-(\d+)/, `${prefix}-$1`);
+                        }
+                    });
+                    // 4. Card action menus onclick handler
+                    document.querySelectorAll('.card-menu-btn').forEach(btn => {
+                        const onclickAttr = btn.getAttribute('onclick');
+                        if (onclickAttr) {
+                            btn.setAttribute('onclick', onclickAttr.replace(/,\s*'([A-Za-z0-9]+)-(\d+)'\s*,/, `, '${prefix}-$2',`));
+                        }
+                    });
                 }
             };
 
@@ -2012,7 +2058,7 @@
                         if (data.team_name) {
                             window.CURRENT_TEAM.name = data.team_name;
                             window.CURRENT_TEAM.initials = data.team_initials;
-                            applyNewTeamName(data.team_name, data.team_initials);
+                            applyNewTeamName(data.team_name, data.team_initials, data.ticket_prefix);
                         }
                         if (data.team_icon_type) {
                             window.CURRENT_TEAM.iconType = data.team_icon_type;

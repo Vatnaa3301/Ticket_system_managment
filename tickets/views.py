@@ -1552,10 +1552,12 @@ def api_create_ticket(request):
         if not subject:
             return JsonResponse({'success': False, 'error': 'Subject is required.'}, status=400)
 
-        # Generate ticket code (e.g. KAN-12)
+        # Generate ticket code (e.g. COC-12)
+        team_setting = TeamSetting.get_settings()
+        prefix = team_setting.ticket_prefix
         last_ticket = Ticket.objects.order_by('-ticket_id').first()
         next_num = (last_ticket.ticket_id + 1) if last_ticket else 1
-        ticket_code = f"KAN-{next_num}"
+        ticket_code = f"{prefix}-{next_num}"
 
         user = request.user if hasattr(request, 'user') and request.user.is_authenticated else User.objects.first()
 
@@ -2192,6 +2194,21 @@ def api_update_team_name(request):
         from django.core.cache import cache
         cache.delete('global_team_setting')
 
+        # Update all existing tickets to use the new 3-letter prefix (e.g. COC-16, LOV-16)
+        new_prefix = team_setting.ticket_prefix
+        for t in Ticket.objects.all():
+            old_code = t.ticket_code or ''
+            if '-' in old_code:
+                num_part = old_code.split('-')[-1]
+            else:
+                num_part = str(t.ticket_id)
+            new_code = f"{new_prefix}-{num_part}"
+            if t.ticket_code != new_code:
+                t.ticket_code = new_code
+                t.save(update_fields=['ticket_code'])
+
+        bump_board_version()
+
         # Broadcast update to all connected clients
         try:
             pusher_client.trigger('team_management', 'team-updated', {
@@ -2200,6 +2217,11 @@ def api_update_team_name(request):
                 'team_icon_type': team_setting.icon_type,
                 'team_icon_value': team_setting.icon_value,
                 'team_icon_bg_color': team_setting.icon_bg_color,
+                'ticket_prefix': new_prefix,
+            })
+            pusher_client.trigger('board_channel', 'ticket-prefix-updated', {
+                'team_name': team_setting.name,
+                'ticket_prefix': new_prefix,
             })
         except Exception as p_err:
             print(f"[Pusher] team-updated error: {p_err}")
@@ -2211,6 +2233,7 @@ def api_update_team_name(request):
             'team_icon_type': team_setting.icon_type,
             'team_icon_value': team_setting.icon_value,
             'team_icon_bg_color': team_setting.icon_bg_color,
+            'ticket_prefix': new_prefix,
             'message': 'Team name updated successfully!'
         })
     except Exception as e:

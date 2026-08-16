@@ -1455,6 +1455,12 @@ document.addEventListener('DOMContentLoaded', () => {
             // 2. Update column positions, priorities, or render newly created tickets
             tickets.forEach(t => {
                 let card = document.querySelector(`.ticket-card[data-ticket-id="${t.ticket_id}"]`);
+                if (card && t.ticket_code) {
+                    const codeSpan = card.querySelector('.key-tag span');
+                    if (codeSpan && codeSpan.textContent !== t.ticket_code) {
+                        codeSpan.textContent = t.ticket_code;
+                    }
+                }
                 if (t.priority_name) {
                     if (window.updateCardPriorityRealtime) {
                         window.updateCardPriorityRealtime(t.ticket_id, t.priority_name, t.priority_id);
@@ -1564,6 +1570,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 boardChannel.bind('ticket-updated', function() {
                     checkBoardSync();
+                });
+
+                boardChannel.bind('ticket-prefix-updated', function(data) {
+                    if (data && data.ticket_prefix) {
+                        if (window.applyNewTeamName) {
+                            window.applyNewTeamName(data.team_name, null, data.ticket_prefix);
+                        } else {
+                            document.querySelectorAll('.key-tag span, .ticket-code-text, .activity-ticket-code').forEach(el => {
+                                el.textContent = el.textContent.replace(/^[A-Za-z0-9]+-(\d+)/, `${data.ticket_prefix}-$1`);
+                            });
+                        }
+                    }
                 });
 
                 boardChannel.bind('priority-updated', function(data) {

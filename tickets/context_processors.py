@@ -24,5 +24,6 @@ def team_context(request):
         'team_icon_type': team_setting.icon_type,
         'team_icon_value': team_setting.icon_value,
         'team_icon_bg_color': team_setting.icon_bg_color,
+        'ticket_prefix': team_setting.ticket_prefix,
         'is_admin': is_admin,
     }
