@@ -249,15 +249,6 @@ def login_view(request):
         user = authenticate(request, username=username_to_auth, password=password)
 
         if user is not None:
-            profile = getattr(user, 'profile', None)
-            if profile and not profile.is_email_verified and not user.is_superuser:
-                return render(request, 'login.html', {
-                    'error': f'Your email address ({user.email}) has not been verified yet.',
-                    'unverified_email': user.email,
-                    'username_or_email': identifier,
-                    'next_url': next_url,
-                })
-
             login(request, user)
             if next_url and next_url != '/login/' and next_url != 'login':
                 return redirect(next_url)
@@ -345,17 +336,19 @@ def signup_view(request):
             role=guest_role,
             full_name=full_name or username,
             status='Active',
-            is_email_verified=False
+            is_email_verified=True
         )
 
-        # Send verification email
-        verify_url = send_verification_email(request, user)
+        # Attempt to send notification email without blocking signup flow
+        try:
+            send_verification_email(request, user)
+        except Exception:
+            pass
 
-        return render(request, 'login.html', {
-            'active_tab': 'verification_sent',
-            'verification_email': email,
-            'verification_url': verify_url,
-        })
+        # Automatically log the user in immediately
+        login(request, user)
+        messages.success(request, f"Welcome to Jira, {user.first_name or user.username}!")
+        return redirect('board')
 
     return redirect('login')
 
