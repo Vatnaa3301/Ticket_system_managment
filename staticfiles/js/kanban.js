@@ -2619,3 +2619,15 @@ if (btnAddCatEdit) {
     });
 }
 
+// Auto-open ticket detail modal if 'ticket' query parameter is present in URL
+document.addEventListener('DOMContentLoaded', function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const ticketParam = urlParams.get('ticket');
+    if (ticketParam && window.openTicketDetailModal) {
+        setTimeout(() => {
+            window.openTicketDetailModal(ticketParam);
+        }, 150);
+    }
+});
+
+

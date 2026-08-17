@@ -205,8 +205,41 @@ from django.urls import reverse
 from .models import (
     Ticket, TicketStatus, Priority, TicketCategory, TicketComment,
     TicketLog, TicketAssignment, UserProfile, ServiceRating, SLARule,
-    TicketAttachment, Role, TeamSetting
+    TicketAttachment, Role, TeamSetting, Notification
 )
+
+def create_ticket_notification(user, ticket, title, message="", notification_type="Assignment"):
+    """Create in-app Notification record and broadcast via Pusher on user's personal channel."""
+    if not user:
+        return None
+    try:
+        notif = Notification.objects.create(
+            user=user,
+            ticket=ticket,
+            title=title,
+            message=message or '',
+            notification_type=notification_type,
+            is_read=False
+        )
+        try:
+            unread_count = Notification.objects.filter(user=user, is_read=False).count()
+            pusher_client.trigger(f'user-notifications-{user.id}', 'new-notification', {
+                'notification_id': notif.notification_id,
+                'title': notif.title,
+                'message': notif.message,
+                'notification_type': notif.notification_type,
+                'ticket_id': ticket.ticket_id if ticket else None,
+                'ticket_code': ticket.ticket_code if ticket else '',
+                'created_at': notif.created_at.strftime('%d %b %Y, %H:%M'),
+                'unread_count': unread_count,
+            })
+        except Exception as p_err:
+            print(f"[Pusher] notification trigger error: {p_err}")
+        return notif
+    except Exception as e:
+        print(f"[Notification] Creation error: {e}")
+        return None
+
 
 def save_file_to_storage(file_obj, subfolder, custom_filename=None):
     """
@@ -1589,9 +1622,16 @@ def api_create_ticket(request):
             due_date=due_date
         )
 
-        # Send email notification to assigned user via Resend if assigned
+        # Send email and in-app notification to assigned user if assigned
         if assigned_to:
             send_assignment_email(ticket, assigned_to)
+            create_ticket_notification(
+                user=assigned_to,
+                ticket=ticket,
+                title=f"You have been assigned to {ticket.ticket_code}",
+                message=ticket.subject,
+                notification_type="Assignment"
+            )
 
         # Handle uploaded attachments
         if request.FILES:
@@ -1826,9 +1866,16 @@ def api_edit_ticket(request, ticket_id):
         ticket.due_date = due_date
         ticket.save()
 
-        # Send email if assigned_to was updated to a new user
+        # Send email and in-app notification if assigned_to was updated to a new user
         if new_assignee and (not old_assignee or old_assignee.pk != new_assignee.pk):
             send_assignment_email(ticket, new_assignee)
+            create_ticket_notification(
+                user=new_assignee,
+                ticket=ticket,
+                title=f"You have been assigned to {ticket.ticket_code}",
+                message=ticket.subject,
+                notification_type="Assignment"
+            )
 
 
         user = request.user if hasattr(request, 'user') and request.user.is_authenticated else User.objects.first()
@@ -1956,6 +2003,24 @@ def api_add_comment(request, ticket_id):
             )
         except Exception as p_err:
             print("Pusher trigger error:", p_err)
+
+        # In-app notification for ticket assignee or creator (if not the commenter)
+        if ticket.assigned_to and ticket.assigned_to.pk != user.pk:
+            create_ticket_notification(
+                user=ticket.assigned_to,
+                ticket=ticket,
+                title=f"{user_display} commented on {ticket.ticket_code}",
+                message=comment_text[:120],
+                notification_type="Comment"
+            )
+        elif ticket.user and ticket.user.pk != user.pk:
+            create_ticket_notification(
+                user=ticket.user,
+                ticket=ticket,
+                title=f"{user_display} commented on {ticket.ticket_code}",
+                message=comment_text[:120],
+                notification_type="Comment"
+            )
 
         return JsonResponse({
             'success': True,
@@ -2390,5 +2455,180 @@ def api_search_tickets(request):
         'count': len(results),
         'tickets': results
     })
+
+
+@login_required
+def api_get_notifications(request):
+    """Retrieve personal notifications for the logged-in user, supporting unread filter and Jira-style date grouping."""
+    user = request.user
+    today = timezone.now().date()
+    team_setting = TeamSetting.get_settings()
+    team_name = team_setting.name
+
+    # 1. Automatically check overdue active tickets assigned to this user and create overdue notification if not exists
+    overdue_tickets = Ticket.objects.filter(
+        assigned_to=user,
+        due_date__lt=today
+    ).exclude(status__status_name__in=['Done', 'Resolved', 'Closed'])
+
+    for ot in overdue_tickets:
+        days_late = (today - ot.due_date).days
+        # Check if an overdue notification for this ticket already exists within the last 24 hours
+        recent_notif = Notification.objects.filter(
+            user=user,
+            ticket=ot,
+            notification_type='Overdue',
+            created_at__gte=timezone.now() - timedelta(hours=24)
+        ).first()
+        if not recent_notif:
+            Notification.objects.create(
+                user=user,
+                ticket=ot,
+                title=f"You have 1 overdue item ({ot.ticket_code})" if days_late <= 1 else f"You have 1 overdue item ({ot.ticket_code}, {days_late}d overdue)",
+                message=ot.subject,
+                notification_type="Overdue",
+                is_read=False
+            )
+
+    # 2. Check tickets due today or tomorrow
+    due_soon_tickets = Ticket.objects.filter(
+        assigned_to=user,
+        due_date__gte=today,
+        due_date__lte=today + timedelta(days=1)
+    ).exclude(status__status_name__in=['Done', 'Resolved', 'Closed'])
+
+    for dt in due_soon_tickets:
+        recent_due = Notification.objects.filter(
+            user=user,
+            ticket=dt,
+            notification_type='Due Date',
+            created_at__gte=timezone.now() - timedelta(hours=24)
+        ).first()
+        if not recent_due:
+            is_today = (dt.due_date == today)
+            due_label = "today" if is_today else "tomorrow"
+            Notification.objects.create(
+                user=user,
+                ticket=dt,
+                title=f"Ticket {dt.ticket_code} is due {due_label}",
+                message=dt.subject,
+                notification_type="Due Date",
+                is_read=False
+            )
+
+    # 3. Query user's notifications
+    unread_only = request.GET.get('unread_only') in ['true', '1', 'True']
+    tab = request.GET.get('tab', 'direct').lower()
+
+    qs = Notification.objects.filter(user=user).select_related('ticket', 'ticket__status', 'ticket__priority')
+    
+    if tab == 'watching':
+        # Watching tab: comments/updates on tickets user reported/created or was involved in, but not directly assigned
+        qs = qs.filter(Q(notification_type='Watching') | (Q(notification_type='Comment') & ~Q(ticket__assigned_to=user)))
+    else:
+        # Direct tab: Assignment, Overdue, Due Date, or comments on user's assigned tickets
+        if tab == 'direct':
+            qs = qs.exclude(notification_type='Watching')
+
+    total_unread = Notification.objects.filter(user=user, is_read=False).count()
+
+    if unread_only:
+        qs = qs.filter(is_read=False)
+
+    notifications_list = qs.order_by('-created_at')[:40]
+
+    now = timezone.now()
+    today_items = []
+    yesterday_items = []
+    older_items = []
+
+    all_items = []
+
+    for n in notifications_list:
+        diff = now - n.created_at
+        if diff.days > 30:
+            time_str = n.created_at.strftime("%b %d, %Y")
+        elif diff.days >= 7:
+            weeks = diff.days // 7
+            time_str = f"{weeks} week{'s' if weeks > 1 else ''} ago"
+        elif diff.days == 1:
+            time_str = "1 day ago"
+        elif diff.days > 1:
+            time_str = f"{diff.days} days ago"
+        elif diff.seconds >= 3600:
+            hours = diff.seconds // 3600
+            time_str = f"{hours} hour{'s' if hours > 1 else ''} ago"
+        elif diff.seconds >= 60:
+            mins = diff.seconds // 60
+            time_str = f"{mins} minute{'s' if mins > 1 else ''} ago"
+        else:
+            time_str = "Just now"
+
+        item_data = {
+            'notification_id': n.notification_id,
+            'title': n.title,
+            'message': n.message,
+            'notification_type': n.notification_type,
+            'is_read': n.is_read,
+            'created_at': n.created_at.strftime('%Y-%m-%d %H:%M'),
+            'time_str': time_str,
+            'ticket_id': n.ticket.ticket_id if n.ticket else None,
+            'ticket_code': n.ticket.ticket_code if n.ticket else '',
+            'ticket_subject': n.ticket.subject if n.ticket else '',
+            'team_name': team_name,
+        }
+        all_items.append(item_data)
+
+        # Date categorization
+        created_date = n.created_at.date()
+        if created_date == today:
+            today_items.append(item_data)
+        elif created_date == (today - timedelta(days=1)):
+            yesterday_items.append(item_data)
+        else:
+            older_items.append(item_data)
+
+    return JsonResponse({
+        'success': True,
+        'unread_count': total_unread,
+        'count': len(all_items),
+        'notifications': all_items,
+        'groups': {
+            'Today': today_items,
+            'Yesterday': yesterday_items,
+            'Older': older_items
+        }
+    })
+
+
+@csrf_exempt
+@require_POST
+def api_mark_notification_read(request, notification_id):
+    """Mark a single notification as read for the logged-in user."""
+    if not request.user.is_authenticated:
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=401)
+    try:
+        notif = Notification.objects.filter(notification_id=notification_id, user=request.user).first()
+        if notif:
+            notif.is_read = True
+            notif.save(update_fields=['is_read'])
+        unread_count = Notification.objects.filter(user=request.user, is_read=False).count()
+        return JsonResponse({'success': True, 'unread_count': unread_count})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
+
+@csrf_exempt
+@require_POST
+def api_mark_all_notifications_read(request):
+    """Mark all notifications as read for the logged-in user."""
+    if not request.user.is_authenticated:
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=401)
+    try:
+        Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
+        return JsonResponse({'success': True, 'unread_count': 0})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
 
 

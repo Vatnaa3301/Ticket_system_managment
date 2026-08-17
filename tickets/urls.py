@@ -45,5 +45,8 @@ urlpatterns = [
     path('api/team/update-name/', views.api_update_team_name, name='api_update_team_name'),
     path('api/team/update-icon/', views.api_update_team_icon, name='api_update_team_icon'),
     path('api/tickets/search/', views.api_search_tickets, name='api_search_tickets'),
+    path('api/notifications/', views.api_get_notifications, name='api_get_notifications'),
+    path('api/notifications/<int:notification_id>/read/', views.api_mark_notification_read, name='api_mark_notification_read'),
+    path('api/notifications/mark-all-read/', views.api_mark_all_notifications_read, name='api_mark_all_notifications_read'),
 ]
 
