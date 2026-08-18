@@ -3206,4 +3206,59 @@ def api_remove_space_member(request, space_id):
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
+@csrf_exempt
+@require_POST
+def api_delete_space(request, space_id):
+    """
+    Delete a space (Admin only).
+    Requires explicit confirmation keyword ('delete').
+    Enforces that the last remaining space in the system cannot be deleted.
+    """
+    if not request.user.is_authenticated:
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=401)
+
+    profile = getattr(request.user, 'profile', None)
+    is_admin = request.user.is_superuser or bool(profile and profile.role and profile.role.role_name in ['Admin', 'Administrator'])
+    if not is_admin:
+        return JsonResponse({'success': False, 'error': 'Only Administrators can delete spaces.'}, status=403)
+
+    if TeamSetting.objects.count() <= 1:
+        return JsonResponse({
+            'success': False,
+            'error': 'Cannot delete the last remaining space. At least one space is required in the system.'
+        }, status=400)
+
+    space = get_object_or_404(TeamSetting, pk=space_id)
+
+    try:
+        data = json.loads(request.body) if request.body else {}
+        confirmation = str(data.get('confirmation', '')).strip().lower()
+        if confirmation != 'delete':
+            return JsonResponse({
+                'success': False,
+                'error': 'Please type "delete" to confirm space deletion.'
+            }, status=400)
+
+        space_name = space.name
+
+        # If currently active space in session is being deleted, switch to another space
+        active_space_id = request.session.get('active_space_id')
+        remaining_space = TeamSetting.objects.exclude(id=space.id).first()
+        if active_space_id == space.id and remaining_space:
+            request.session['active_space_id'] = remaining_space.id
+
+        # Delete space (cascades associated tickets)
+        space.delete()
+
+        return JsonResponse({
+            'success': True,
+            'message': f'Space "{space_name}" has been permanently deleted.',
+            'redirect_url': '/spaces/',
+            'remaining_count': TeamSetting.objects.count()
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+
 

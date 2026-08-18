@@ -2543,10 +2543,181 @@
         </div>
     </div>
 
+    <!-- DELETE SPACE CONFIRMATION MODAL -->
+    <div class="modal-overlay" id="deleteSpaceModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(9,30,66,0.54); z-index:999999; align-items:center; justify-content:center; backdrop-filter:blur(2px);">
+        <div class="modal-card" style="width:480px; max-width:92vw; background:var(--jira-card-bg); border-radius:8px; box-shadow:0 16px 48px rgba(0,0,0,0.35); overflow:hidden; border:1px solid var(--jira-border);">
+            <div class="modal-header" style="padding:18px 24px; border-bottom:1px solid var(--jira-border); display:flex; align-items:center; justify-content:space-between;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <div style="width:32px; height:32px; border-radius:50%; background:rgba(222,53,11,0.12); color:#de350b; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                    </div>
+                    <h3 style="margin:0; font-size:17px; font-weight:700; color:var(--jira-text-dark);">Delete space?</h3>
+                </div>
+                <button type="button" class="icon-btn" onclick="closeDeleteSpaceModal()" style="font-size:20px; line-height:1; cursor:pointer;">&times;</button>
+            </div>
+
+            <form id="deleteSpaceForm" onsubmit="submitDeleteSpace(event)" style="padding:20px 24px;">
+                <div id="deleteSpaceAlert" style="display:none; padding:10px 14px; border-radius:4px; font-size:13px; margin-bottom:16px;"></div>
+
+                <p style="margin:0 0 12px 0; font-size:14px; color:var(--jira-text-dark); line-height:1.5;">
+                    You are about to permanently delete <strong id="deleteSpaceTargetName" style="color:#de350b;">Space Name</strong>.
+                </p>
+
+                <div style="background:rgba(222,53,11,0.08); border-left:3px solid #de350b; padding:12px 14px; border-radius:4px; margin-bottom:16px;">
+                    <div style="font-size:12px; color:var(--jira-text-dark); line-height:1.4;">
+                        <strong>Warning:</strong> All tickets, issues, boards, attachments, and configurations associated with this space will be permanently deleted. <strong>This action cannot be undone.</strong>
+                    </div>
+                </div>
+
+                <div style="margin-bottom:20px;">
+                    <label style="font-size:12px; font-weight:700; color:var(--jira-text-dark); display:block; margin-bottom:6px;">
+                        To confirm deletion, type <code style="background:rgba(9,30,66,0.08); padding:2px 6px; border-radius:3px; font-family:monospace; color:#de350b; font-size:13px;">delete</code> below:
+                    </label>
+                    <input type="text" id="deleteSpaceConfirmInput" class="form-control" placeholder="Type delete to confirm" autocomplete="off" required style="width:100%; height:38px; padding:0 12px; font-size:14px; border-radius:4px; border:1px solid var(--jira-border); background:var(--jira-bg-light); color:var(--jira-text-dark); outline:none;" oninput="validateDeleteSpaceInput(this.value)">
+                </div>
+
+                <div style="display:flex; justify-content:flex-end; gap:10px; border-top:1px solid var(--jira-border); padding-top:16px;">
+                    <button type="button" class="btn-jira-secondary" onclick="closeDeleteSpaceModal()" style="height:36px; padding:0 16px;">Cancel</button>
+                    <button type="submit" id="btnConfirmDeleteSpace" class="btn-jira-danger" disabled style="height:36px; padding:0 20px; background:#de350b; color:#ffffff; border:none; border-radius:4px; font-size:13px; font-weight:600; cursor:not-allowed; opacity:0.5; display:inline-flex; align-items:center; gap:6px; transition:opacity 0.15s ease;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                        <span>Delete space</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- GLOBAL SPACE MODAL HANDLERS -->
     <script>
     let selectedSpaceColor = '#0052cc';
     let currentTargetSpaceId = {{ active_space.id|default:1 }};
+    let deleteTargetSpaceId = null;
+
+    function openDeleteSpaceModal(spaceId, spaceName) {
+        {% if not is_admin %}
+        alert('Administrator permissions required to delete spaces.');
+        return;
+        {% endif %}
+
+        deleteTargetSpaceId = spaceId;
+        const modal = document.getElementById('deleteSpaceModal');
+        if (!modal) return;
+
+        const nameSpan = document.getElementById('deleteSpaceTargetName');
+        if (nameSpan) nameSpan.textContent = spaceName || 'this space';
+
+        const alertBox = document.getElementById('deleteSpaceAlert');
+        if (alertBox) alertBox.style.display = 'none';
+
+        const input = document.getElementById('deleteSpaceConfirmInput');
+        if (input) input.value = '';
+
+        const submitBtn = document.getElementById('btnConfirmDeleteSpace');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.style.opacity = '0.5';
+            submitBtn.style.cursor = 'not-allowed';
+            submitBtn.innerHTML = `
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                <span>Delete space</span>
+            `;
+        }
+
+        modal.style.display = 'flex';
+        setTimeout(() => {
+            if (input) input.focus();
+        }, 50);
+    }
+
+    function closeDeleteSpaceModal() {
+        const modal = document.getElementById('deleteSpaceModal');
+        if (modal) modal.style.display = 'none';
+        deleteTargetSpaceId = null;
+    }
+
+    function validateDeleteSpaceInput(val) {
+        const submitBtn = document.getElementById('btnConfirmDeleteSpace');
+        if (!submitBtn) return;
+        const clean = (val || '').trim().toLowerCase();
+        if (clean === 'delete') {
+            submitBtn.disabled = false;
+            submitBtn.style.opacity = '1';
+            submitBtn.style.cursor = 'pointer';
+        } else {
+            submitBtn.disabled = true;
+            submitBtn.style.opacity = '0.5';
+            submitBtn.style.cursor = 'not-allowed';
+        }
+    }
+
+    async function submitDeleteSpace(e) {
+        e.preventDefault();
+        if (!deleteTargetSpaceId) return;
+
+        const inputVal = (document.getElementById('deleteSpaceConfirmInput')?.value || '').trim().toLowerCase();
+        if (inputVal !== 'delete') return;
+
+        const alertBox = document.getElementById('deleteSpaceAlert');
+        const submitBtn = document.getElementById('btnConfirmDeleteSpace');
+
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span>Deleting...</span>';
+        }
+
+        try {
+            const res = await fetch(`/api/spaces/${deleteTargetSpaceId}/delete/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken') || ''
+                },
+                body: JSON.stringify({ confirmation: 'delete' })
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                if (alertBox) {
+                    alertBox.style.background = 'rgba(31, 132, 90, 0.15)';
+                    alertBox.style.color = '#1f845a';
+                    alertBox.textContent = data.message || 'Space deleted successfully.';
+                    alertBox.style.display = 'block';
+                }
+                setTimeout(() => {
+                    closeDeleteSpaceModal();
+                    window.location.href = data.redirect_url || '/spaces/';
+                }, 400);
+            } else {
+                if (alertBox) {
+                    alertBox.style.background = 'rgba(239, 68, 68, 0.15)';
+                    alertBox.style.color = '#ef4444';
+                    alertBox.textContent = data.error || 'Failed to delete space.';
+                    alertBox.style.display = 'block';
+                }
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = `
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                        <span>Delete space</span>
+                    `;
+                }
+            }
+        } catch (err) {
+            if (alertBox) {
+                alertBox.style.background = 'rgba(239, 68, 68, 0.15)';
+                alertBox.style.color = '#ef4444';
+                alertBox.textContent = 'Network error while deleting space.';
+                alertBox.style.display = 'block';
+            }
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = `
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    <span>Delete space</span>
+                `;
+            }
+        }
+    }
 
     function openCreateSpaceModal() {
         {% if not can_create_space %}

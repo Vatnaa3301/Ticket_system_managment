@@ -21,6 +21,7 @@ urlpatterns = [
 
     # APIs
     path('api/spaces/create/', views.api_create_space, name='api_create_space'),
+    path('api/spaces/<int:space_id>/delete/', views.api_delete_space, name='api_delete_space'),
     path('api/spaces/<int:space_id>/members/add/', views.api_add_space_members, name='api_add_space_members'),
     path('api/spaces/<int:space_id>/members/remove/', views.api_remove_space_member, name='api_remove_space_member'),
     path('api/reports/procurement/data/', views.api_procurement_report_data, name='api_procurement_report_data'),
