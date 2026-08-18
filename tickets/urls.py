@@ -15,9 +15,14 @@ urlpatterns = [
     path('list/', views.list_view, name='list'),
     path('summary/', views.summary_view, name='summary'),
     path('teams/', views.teams_view, name='teams'),
+    path('spaces/', views.spaces_list_view, name='spaces'),
+    path('spaces/switch/<int:space_id>/', views.switch_space_view, name='switch_space'),
     path('reports/procurement/', views.procurement_report_view, name='procurement_report'),
 
     # APIs
+    path('api/spaces/create/', views.api_create_space, name='api_create_space'),
+    path('api/spaces/<int:space_id>/members/add/', views.api_add_space_members, name='api_add_space_members'),
+    path('api/spaces/<int:space_id>/members/remove/', views.api_remove_space_member, name='api_remove_space_member'),
     path('api/reports/procurement/data/', views.api_procurement_report_data, name='api_procurement_report_data'),
     path('api/summary/', views.api_summary_metrics, name='api_summary_metrics'),
     path('api/board/data/', views.api_board_data, name='api_board_data'),

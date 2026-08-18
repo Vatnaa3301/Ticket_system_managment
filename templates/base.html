@@ -253,18 +253,43 @@
             </ul>
 
             <div style="margin-top:16px;">
-                <div style="padding:4px 8px; font-size:11px; font-weight:700; color:var(--jira-text-muted); text-transform:uppercase; letter-spacing:0.5px;">
-                    <span>Spaces</span>
+                <div style="display:flex; align-items:center; justify-content:space-between; padding:4px 8px;">
+                    <span style="font-size:11px; font-weight:700; color:var(--jira-text-muted); text-transform:uppercase; letter-spacing:0.5px;">Spaces</span>
+                    <div style="display:flex; align-items:center; gap:2px;">
+                        {% if can_create_space %}
+                        <button type="button" class="icon-btn" onclick="openCreateSpaceModal()" title="Create space (Max 3 spaces)" style="padding:2px 4px; font-size:14px; color:var(--jira-text-muted);">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        </button>
+                        {% endif %}
+                        <a href="{% url 'spaces' %}" class="icon-btn" title="View all spaces" style="padding:2px 4px; font-size:12px; color:var(--jira-text-muted); text-decoration:none;">•••</a>
+                    </div>
                 </div>
 
-                <ul class="nav-menu" style="margin-top:4px;">
+                <div style="padding:2px 8px 4px 8px; font-size:10px; font-weight:600; color:var(--jira-text-muted); text-transform:uppercase; letter-spacing:0.3px;">
+                    <span>Recent</span>
+                </div>
+
+                <ul class="nav-menu" style="margin-top:2px;">
+                    {% for sp in all_spaces %}
                     <li>
-                        <a href="{% url 'board' %}" class="nav-item-link {% if active_view == 'board' or active_view == 'list' %}active{% endif %}">
+                        <a href="{% url 'switch_space' sp.id %}" class="nav-item-link {% if sp.id == active_space.id and active_view != 'spaces' %}active{% endif %}" title="{{ sp.name }} ({{ sp.ticket_prefix }})">
                             <div class="nav-left">
                                 <div class="sidebar-space-avatar" style="width:18px; height:18px; border-radius:3px; overflow:hidden; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:800;">
-                                    {% render_team_avatar team_icon_type team_icon_value team_initials team_icon_bg_color %}
+                                    {% render_team_avatar sp.icon_type sp.icon_value sp.initials sp.icon_bg_color %}
                                 </div>
-                                <span class="global-team-name-text">{{ team_name }}</span>
+                                <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:140px;">{{ sp.name }}</span>
+                            </div>
+                        </a>
+                    </li>
+                    {% endfor %}
+                    <li>
+                        <a href="{% url 'spaces' %}" class="nav-item-link {% if active_view == 'spaces' %}active{% endif %}" id="sidebarMoreSpacesLink">
+                            <div class="nav-left" style="justify-content:space-between; width:100%;">
+                                <div style="display:flex; align-items:center; gap:8px;">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                                    <span>More spaces</span>
+                                </div>
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--jira-text-muted);"><polyline points="9 18 15 12 9 6"/></svg>
                             </div>
                         </a>
                     </li>
@@ -2377,6 +2402,497 @@
                 window.refreshJiraNotifications(false);
             });
         })();
+    </script>
+
+    <!-- CREATE SPACE MODAL (MAX 3 SPACES) -->
+    <div class="modal-overlay" id="createSpaceModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(9,30,66,0.54); z-index:99999; align-items:center; justify-content:center; backdrop-filter:blur(2px);">
+        <div class="modal-card" style="width:520px; max-width:92vw; background:var(--jira-card-bg); border-radius:8px; box-shadow:0 16px 48px rgba(0,0,0,0.35); overflow:hidden; border:1px solid var(--jira-border);">
+            <div class="modal-header" style="padding:18px 24px; border-bottom:1px solid var(--jira-border); display:flex; align-items:center; justify-content:space-between;">
+                <div>
+                    <h3 style="margin:0; font-size:18px; font-weight:700; color:var(--jira-text-dark);">Create space</h3>
+                    <p style="margin:4px 0 0 0; font-size:12px; color:var(--jira-text-muted);">Spaces help organize your team's tickets and boards.</p>
+                </div>
+                <button type="button" class="icon-btn" onclick="closeCreateSpaceModal()" style="font-size:20px; line-height:1; cursor:pointer;">&times;</button>
+            </div>
+
+            <form id="createSpaceForm" onsubmit="submitCreateSpace(event)" style="padding:20px 24px;">
+                <div id="createSpaceAlert" style="display:none; padding:10px 14px; border-radius:4px; font-size:13px; margin-bottom:16px;"></div>
+
+                <div style="margin-bottom:16px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                        <label style="font-size:12px; font-weight:700; color:var(--jira-text-dark);">Space name <span style="color:#ff5630;">*</span></label>
+                        <span style="font-size:11px; font-weight:600; color:var(--jira-text-muted);">{{ total_spaces_count }}/3 spaces used</span>
+                    </div>
+                    <input type="text" id="newSpaceName" class="form-control" placeholder="e.g. Engineering, Marketing, Mobile App" required style="width:100%; height:38px; padding:0 12px; font-size:14px; border-radius:4px; border:1px solid var(--jira-border); background:var(--jira-bg-light); color:var(--jira-text-dark); outline:none;" oninput="updateSpaceKeyPreview(this.value)">
+                </div>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+                    <div>
+                        <label style="font-size:12px; font-weight:700; color:var(--jira-text-dark); display:block; margin-bottom:6px;">Key <span style="color:#ff5630;">*</span></label>
+                        <input type="text" id="newSpaceKey" class="form-control" placeholder="e.g. ENG" maxlength="10" style="width:100%; height:38px; padding:0 12px; font-size:14px; font-weight:700; text-transform:uppercase; border-radius:4px; border:1px solid var(--jira-border); background:var(--jira-bg-light); color:var(--jira-text-dark); outline:none;">
+                    </div>
+                    <div>
+                        <label style="font-size:12px; font-weight:700; color:var(--jira-text-dark); display:block; margin-bottom:6px;">Space type</label>
+                        <select id="newSpaceType" class="form-control" style="width:100%; height:38px; padding:0 10px; font-size:13px; border-radius:4px; border:1px solid var(--jira-border); background:var(--jira-bg-light); color:var(--jira-text-dark); outline:none;">
+                            <option value="Team-managed software">Team-managed software</option>
+                            <option value="Company-managed software">Company-managed software</option>
+                            <option value="Service project">Service project</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Icon Preset & Color Picker -->
+                <div style="margin-bottom:16px;">
+                    <label style="font-size:12px; font-weight:700; color:var(--jira-text-dark); display:block; margin-bottom:6px;">Space Icon & Color</label>
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <div id="newSpaceIconPreview" style="width:36px; height:36px; border-radius:6px; background:#0052cc; color:#ffffff; font-weight:800; font-size:14px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                            SPC
+                        </div>
+                        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                            <button type="button" class="color-swatch" onclick="setNewSpaceColor('#0052cc', this)" style="width:24px; height:24px; border-radius:50%; background:#0052cc; border:2px solid #ffffff; box-shadow:0 0 0 1px #0052cc; cursor:pointer;"></button>
+                            <button type="button" class="color-swatch" onclick="setNewSpaceColor('#00875a', this)" style="width:24px; height:24px; border-radius:50%; background:#00875a; border:2px solid transparent; cursor:pointer;"></button>
+                            <button type="button" class="color-swatch" onclick="setNewSpaceColor('#e56910', this)" style="width:24px; height:24px; border-radius:50%; background:#e56910; border:2px solid transparent; cursor:pointer;"></button>
+                            <button type="button" class="color-swatch" onclick="setNewSpaceColor('#de350b', this)" style="width:24px; height:24px; border-radius:50%; background:#de350b; border:2px solid transparent; cursor:pointer;"></button>
+                            <button type="button" class="color-swatch" onclick="setNewSpaceColor('#904ee2', this)" style="width:24px; height:24px; border-radius:50%; background:#904ee2; border:2px solid transparent; cursor:pointer;"></button>
+                            <button type="button" class="color-swatch" onclick="setNewSpaceColor('#00b8d9', this)" style="width:24px; height:24px; border-radius:50%; background:#00b8d9; border:2px solid transparent; cursor:pointer;"></button>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-bottom:20px;">
+                    <label style="font-size:12px; font-weight:700; color:var(--jira-text-dark); display:block; margin-bottom:6px;">Description (Optional)</label>
+                    <textarea id="newSpaceDescription" rows="2" style="width:100%; padding:8px 12px; font-size:13px; border-radius:4px; border:1px solid var(--jira-border); background:var(--jira-bg-light); color:var(--jira-text-dark); outline:none; resize:none;" placeholder="Brief description of this space's purpose..."></textarea>
+                </div>
+
+                <div style="display:flex; justify-content:flex-end; gap:10px; border-top:1px solid var(--jira-border); padding-top:16px;">
+                    <button type="button" class="btn-jira-secondary" onclick="closeCreateSpaceModal()" style="height:36px; padding:0 16px;">Cancel</button>
+                    <button type="submit" id="btnSubmitCreateSpace" class="btn-jira-primary" style="height:36px; padding:0 20px;">
+                        <span>Create</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ADD PEOPLE TO SPACE MODAL -->
+    <div class="modal-overlay" id="addSpaceMembersModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(9,30,66,0.54); z-index:99999; align-items:center; justify-content:center; backdrop-filter:blur(2px);">
+        <div class="modal-card" style="width:540px; max-width:92vw; background:var(--jira-card-bg); border-radius:8px; box-shadow:0 16px 48px rgba(0,0,0,0.35); overflow:hidden; border:1px solid var(--jira-border);">
+            <div class="modal-header" style="padding:18px 24px; border-bottom:1px solid var(--jira-border); display:flex; align-items:center; justify-content:space-between;">
+                <div>
+                    <h3 style="margin:0; font-size:18px; font-weight:700; color:var(--jira-text-dark);">Add people to <span id="addSpaceTitleName">Space</span></h3>
+                    <p style="margin:4px 0 0 0; font-size:12px; color:var(--jira-text-muted);">Collaborate with team members on this workspace.</p>
+                </div>
+                <button type="button" class="icon-btn" onclick="closeAddSpaceMembersModal()" style="font-size:20px; line-height:1; cursor:pointer;">&times;</button>
+            </div>
+
+            <!-- TAB SWITCHER -->
+            <div style="display:flex; border-bottom:1px solid var(--jira-border); padding:0 24px;">
+                <button type="button" class="jira-modal-tab active" id="tabAddExistingUsers" onclick="switchAddSpaceTab('existing')" style="padding:10px 16px; background:none; border:none; border-bottom:2px solid #0052cc; color:var(--jira-text-dark); font-weight:600; font-size:13px; cursor:pointer;">Existing Users</button>
+                <button type="button" class="jira-modal-tab" id="tabAddNewUser" onclick="switchAddSpaceTab('new')" style="padding:10px 16px; background:none; border:none; border-bottom:2px solid transparent; color:var(--jira-text-muted); font-weight:600; font-size:13px; cursor:pointer;">Invite New Person</button>
+            </div>
+
+            <div style="padding:20px 24px;">
+                <div id="addSpaceMembersAlert" style="display:none; padding:10px 14px; border-radius:4px; font-size:13px; margin-bottom:16px;"></div>
+
+                <!-- TAB 1: EXISTING USERS SEARCH & SELECT -->
+                <div id="panelAddExistingUsers">
+                    <div style="position:relative; margin-bottom:14px;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position:absolute; left:10px; top:11px; color:var(--jira-text-muted);"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <input type="text" id="spaceExistingUserSearch" placeholder="Search people by name or email..." class="form-control" style="width:100%; height:36px; padding-left:32px; font-size:13px; border-radius:4px; border:1px solid var(--jira-border); background:var(--jira-bg-light); color:var(--jira-text-dark); outline:none;" oninput="filterExistingUsersList(this.value)">
+                    </div>
+
+                    <div id="existingUsersScrollList" style="max-height:220px; overflow-y:auto; border:1px solid var(--jira-border); border-radius:4px; padding:4px 0;">
+                        <!-- Dynamically populated with registered users -->
+                    </div>
+                </div>
+
+                <!-- TAB 2: INVITE NEW USER -->
+                <div id="panelAddNewUser" style="display:none;">
+                    <div style="margin-bottom:12px;">
+                        <label style="font-size:12px; font-weight:700; color:var(--jira-text-dark); display:block; margin-bottom:4px;">Full Name</label>
+                        <input type="text" id="spaceNewUserFullName" class="form-control" placeholder="e.g. Alex Smith" style="width:100%; height:36px; padding:0 12px; font-size:13px; border-radius:4px; border:1px solid var(--jira-border); background:var(--jira-bg-light); color:var(--jira-text-dark); outline:none;">
+                    </div>
+                    <div style="margin-bottom:12px;">
+                        <label style="font-size:12px; font-weight:700; color:var(--jira-text-dark); display:block; margin-bottom:4px;">Email Address <span style="color:#ff5630;">*</span></label>
+                        <input type="email" id="spaceNewUserEmail" class="form-control" placeholder="alex@company.com" style="width:100%; height:36px; padding:0 12px; font-size:13px; border-radius:4px; border:1px solid var(--jira-border); background:var(--jira-bg-light); color:var(--jira-text-dark); outline:none;">
+                    </div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
+                        <div>
+                            <label style="font-size:12px; font-weight:700; color:var(--jira-text-dark); display:block; margin-bottom:4px;">Role</label>
+                            <select id="spaceNewUserRole" class="form-control" style="width:100%; height:36px; padding:0 10px; font-size:13px; border-radius:4px; border:1px solid var(--jira-border); background:var(--jira-bg-light); color:var(--jira-text-dark); outline:none;">
+                                <option value="Member">Member</option>
+                                <option value="Administrator">Administrator</option>
+                                <option value="Support Agent">Support Agent</option>
+                                <option value="Viewer">Viewer</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size:12px; font-weight:700; color:var(--jira-text-dark); display:block; margin-bottom:4px;">Password <span style="color:#ff5630;">*</span></label>
+                            <input type="password" id="spaceNewUserPassword" class="form-control" placeholder="Min 6 chars" style="width:100%; height:36px; padding:0 12px; font-size:13px; border-radius:4px; border:1px solid var(--jira-border); background:var(--jira-bg-light); color:var(--jira-text-dark); outline:none;">
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display:flex; justify-content:flex-end; gap:10px; border-top:1px solid var(--jira-border); padding-top:16px; margin-top:16px;">
+                    <button type="button" class="btn-jira-secondary" onclick="closeAddSpaceMembersModal()" style="height:36px; padding:0 16px;">Cancel</button>
+                    <button type="button" id="btnSubmitAddSpaceMembers" class="btn-jira-primary" onclick="submitAddSpaceMembers()" style="height:36px; padding:0 20px;">
+                        <span>Add People</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- GLOBAL SPACE MODAL HANDLERS -->
+    <script>
+    let selectedSpaceColor = '#0052cc';
+    let currentTargetSpaceId = {{ active_space.id|default:1 }};
+
+    function openCreateSpaceModal() {
+        {% if not can_create_space %}
+            {% if total_spaces_count >= 3 %}
+                alert('Maximum limit of 3 spaces reached. You cannot create more than 3 spaces.');
+            {% else %}
+                alert('Administrator permissions required to create spaces.');
+            {% endif %}
+            return;
+        {% endif %}
+
+        const modal = document.getElementById('createSpaceModal');
+        if (modal) {
+            modal.style.display = 'flex';
+            const alertBox = document.getElementById('createSpaceAlert');
+            if (alertBox) alertBox.style.display = 'none';
+            const form = document.getElementById('createSpaceForm');
+            if (form) form.reset();
+            updateSpaceKeyPreview('');
+            setTimeout(() => {
+                const nameInput = document.getElementById('newSpaceName');
+                if (nameInput) nameInput.focus();
+            }, 50);
+        }
+    }
+
+    function closeCreateSpaceModal() {
+        const modal = document.getElementById('createSpaceModal');
+        if (modal) modal.style.display = 'none';
+    }
+
+    function updateSpaceKeyPreview(val) {
+        const clean = (val || '').trim().replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+        const key = clean.slice(0, 3) || 'SPC';
+        const keyInput = document.getElementById('newSpaceKey');
+        if (keyInput && (!keyInput.dataset.manual || !keyInput.value)) {
+            keyInput.value = key;
+        }
+        const preview = document.getElementById('newSpaceIconPreview');
+        if (preview) {
+            preview.textContent = key.slice(0, 2) || 'SP';
+        }
+    }
+
+    function setNewSpaceColor(color, btn) {
+        selectedSpaceColor = color;
+        const preview = document.getElementById('newSpaceIconPreview');
+        if (preview) preview.style.background = color;
+        document.querySelectorAll('.color-swatch').forEach(b => {
+            b.style.borderColor = 'transparent';
+            b.style.boxShadow = 'none';
+        });
+        if (btn) {
+            btn.style.borderColor = '#ffffff';
+            btn.style.boxShadow = `0 0 0 1px ${color}`;
+        }
+    }
+
+    async function submitCreateSpace(e) {
+        e.preventDefault();
+        const name = (document.getElementById('newSpaceName')?.value || '').trim();
+        const key = (document.getElementById('newSpaceKey')?.value || '').trim().toUpperCase();
+        const spaceType = document.getElementById('newSpaceType')?.value || 'Team-managed software';
+        const description = (document.getElementById('newSpaceDescription')?.value || '').trim();
+        const alertBox = document.getElementById('createSpaceAlert');
+        const submitBtn = document.getElementById('btnSubmitCreateSpace');
+
+        if (!name) {
+            if (alertBox) {
+                alertBox.style.background = 'rgba(239, 68, 68, 0.15)';
+                alertBox.style.color = '#ef4444';
+                alertBox.textContent = 'Space name is required.';
+                alertBox.style.display = 'block';
+            }
+            return;
+        }
+
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span>Creating...</span>';
+        }
+
+        try {
+            const res = await fetch('/api/spaces/create/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken') || ''
+                },
+                body: JSON.stringify({
+                    name: name,
+                    key: key,
+                    space_type: spaceType,
+                    icon_bg_color: selectedSpaceColor,
+                    description: description
+                })
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                if (alertBox) {
+                    alertBox.style.background = 'rgba(31, 132, 90, 0.15)';
+                    alertBox.style.color = '#1f845a';
+                    alertBox.textContent = data.message || 'Space created! Redirecting to new blank board...';
+                    alertBox.style.display = 'block';
+                }
+                setTimeout(() => {
+                    window.location.href = data.redirect_url || '/board/';
+                }, 400);
+            } else {
+                if (alertBox) {
+                    alertBox.style.background = 'rgba(239, 68, 68, 0.15)';
+                    alertBox.style.color = '#ef4444';
+                    alertBox.textContent = data.error || 'Failed to create space.';
+                    alertBox.style.display = 'block';
+                }
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<span>Create</span>';
+                }
+            }
+        } catch (err) {
+            if (alertBox) {
+                alertBox.style.background = 'rgba(239, 68, 68, 0.15)';
+                alertBox.style.color = '#ef4444';
+                alertBox.textContent = 'Network error while creating space.';
+                alertBox.style.display = 'block';
+            }
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<span>Create</span>';
+            }
+        }
+    }
+
+    // ADD PEOPLE TO SPACE MODAL LOGIC
+    let addSpaceActiveTab = 'existing';
+
+    function openAddSpaceMembersModal(spaceId, spaceName) {
+        currentTargetSpaceId = spaceId || {{ active_space.id|default:1 }};
+        const modal = document.getElementById('addSpaceMembersModal');
+        if (!modal) return;
+
+        const titleSpan = document.getElementById('addSpaceTitleName');
+        if (titleSpan) titleSpan.textContent = spaceName || '{{ team_name|escapejs }}';
+
+        const alertBox = document.getElementById('addSpaceMembersAlert');
+        if (alertBox) alertBox.style.display = 'none';
+
+        modal.style.display = 'flex';
+        switchAddSpaceTab('existing');
+        populateExistingUsersList();
+    }
+
+    function closeAddSpaceMembersModal() {
+        const modal = document.getElementById('addSpaceMembersModal');
+        if (modal) modal.style.display = 'none';
+    }
+
+    function switchAddSpaceTab(tab) {
+        addSpaceActiveTab = tab;
+        const tabExisting = document.getElementById('tabAddExistingUsers');
+        const tabNew = document.getElementById('tabAddNewUser');
+        const panelExisting = document.getElementById('panelAddExistingUsers');
+        const panelNew = document.getElementById('panelAddNewUser');
+
+        if (tab === 'existing') {
+            if (tabExisting) { tabExisting.style.borderBottomColor = '#0052cc'; tabExisting.style.color = 'var(--jira-text-dark)'; }
+            if (tabNew) { tabNew.style.borderBottomColor = 'transparent'; tabNew.style.color = 'var(--jira-text-muted)'; }
+            if (panelExisting) panelExisting.style.display = 'block';
+            if (panelNew) panelNew.style.display = 'none';
+        } else {
+            if (tabExisting) { tabExisting.style.borderBottomColor = 'transparent'; tabExisting.style.color = 'var(--jira-text-muted)'; }
+            if (tabNew) { tabNew.style.borderBottomColor = '#0052cc'; tabNew.style.color = 'var(--jira-text-dark)'; }
+            if (panelExisting) panelExisting.style.display = 'none';
+            if (panelNew) panelNew.style.display = 'block';
+        }
+    }
+
+    function populateExistingUsersList() {
+        const listContainer = document.getElementById('existingUsersScrollList');
+        if (!listContainer) return;
+
+        // Fetch registered users via API or use pre-rendered options
+        const userOptions = window.cachedUserOptions || [];
+        if (userOptions.length === 0) {
+            listContainer.innerHTML = `
+                <div style="padding:14px; text-align:center; font-size:12px; color:var(--jira-text-muted);">
+                    Select users or use "Invite New Person" tab.
+                </div>
+            `;
+            return;
+        }
+
+        renderExistingUsersRows(userOptions);
+    }
+
+    function renderExistingUsersRows(users) {
+        const listContainer = document.getElementById('existingUsersScrollList');
+        if (!listContainer) return;
+
+        listContainer.innerHTML = users.map(u => `
+            <label style="display:flex; align-items:center; justify-content:space-between; padding:8px 14px; cursor:pointer; transition:background 0.1s ease; border-bottom:1px solid rgba(9,30,66,0.04);">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <div style="width:26px; height:26px; border-radius:50%; background:${u.avatar_color || '#0052cc'}; color:#fff; font-size:10px; font-weight:700; display:flex; align-items:center; justify-content:center; overflow:hidden;">
+                        ${u.profile_image ? `<img src="${u.profile_image}" style="width:100%; height:100%; object-fit:cover;">` : (u.initials || 'U')}
+                    </div>
+                    <div>
+                        <div style="font-size:13px; font-weight:600; color:var(--jira-text-dark);">${u.name}</div>
+                        <div style="font-size:11px; color:var(--jira-text-muted);">${u.email || u.username}</div>
+                    </div>
+                </div>
+                <input type="checkbox" name="spaceSelectedUsers" value="${u.id}" style="width:16px; height:16px; cursor:pointer;">
+            </label>
+        `).join('');
+    }
+
+    function filterExistingUsersList(q) {
+        const query = (q || '').trim().toLowerCase();
+        const users = window.cachedUserOptions || [];
+        const filtered = users.filter(u => 
+            (u.name && u.name.toLowerCase().includes(query)) ||
+            (u.username && u.username.toLowerCase().includes(query)) ||
+            (u.email && u.email.toLowerCase().includes(query))
+        );
+        renderExistingUsersRows(filtered);
+    }
+
+    async function submitAddSpaceMembers() {
+        const alertBox = document.getElementById('addSpaceMembersAlert');
+        const submitBtn = document.getElementById('btnSubmitAddSpaceMembers');
+
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span>Adding...</span>';
+        }
+
+        let payload = {};
+        if (addSpaceActiveTab === 'existing') {
+            const checkedCheckboxes = document.querySelectorAll('input[name="spaceSelectedUsers"]:checked');
+            const selectedIds = Array.from(checkedCheckboxes).map(cb => parseInt(cb.value));
+            if (selectedIds.length === 0) {
+                if (alertBox) {
+                    alertBox.style.background = 'rgba(239, 68, 68, 0.15)';
+                    alertBox.style.color = '#ef4444';
+                    alertBox.textContent = 'Please select at least one person to add.';
+                    alertBox.style.display = 'block';
+                }
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<span>Add People</span>';
+                }
+                return;
+            }
+            payload = { user_ids: selectedIds };
+        } else {
+            const fullName = (document.getElementById('spaceNewUserFullName')?.value || '').trim();
+            const email = (document.getElementById('spaceNewUserEmail')?.value || '').trim();
+            const roleName = document.getElementById('spaceNewUserRole')?.value || 'Member';
+            const password = (document.getElementById('spaceNewUserPassword')?.value || '').trim();
+
+            if (!email || !password) {
+                if (alertBox) {
+                    alertBox.style.background = 'rgba(239, 68, 68, 0.15)';
+                    alertBox.style.color = '#ef4444';
+                    alertBox.textContent = 'Email and password are required.';
+                    alertBox.style.display = 'block';
+                }
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<span>Add People</span>';
+                }
+                return;
+            }
+            payload = {
+                new_user: {
+                    full_name: fullName,
+                    email: email,
+                    role_name: roleName,
+                    password: password
+                }
+            };
+        }
+
+        try {
+            const res = await fetch(`/api/spaces/${currentTargetSpaceId}/members/add/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken') || ''
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                if (alertBox) {
+                    alertBox.style.background = 'rgba(31, 132, 90, 0.15)';
+                    alertBox.style.color = '#1f845a';
+                    alertBox.textContent = data.message || 'Members added successfully!';
+                    alertBox.style.display = 'block';
+                }
+                setTimeout(() => {
+                    closeAddSpaceMembersModal();
+                    location.reload();
+                }, 500);
+            } else {
+                if (alertBox) {
+                    alertBox.style.background = 'rgba(239, 68, 68, 0.15)';
+                    alertBox.style.color = '#ef4444';
+                    alertBox.textContent = data.error || 'Failed to add members.';
+                    alertBox.style.display = 'block';
+                }
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<span>Add People</span>';
+                }
+            }
+        } catch (err) {
+            if (alertBox) {
+                alertBox.style.background = 'rgba(239, 68, 68, 0.15)';
+                alertBox.style.color = '#ef4444';
+                alertBox.textContent = 'Network error while adding space members.';
+                alertBox.style.display = 'block';
+            }
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<span>Add People</span>';
+            }
+        }
+    }
+
+    // Cache user options for quick access
+    window.cachedUserOptions = [
+        {% for u in users %}
+        {
+            id: {{ u.id }},
+            username: "{{ u.username|escapejs }}",
+            name: "{{ u.profile.full_name|default:u.username|escapejs }}",
+            initials: "{{ u.profile.full_name|default:u.username|slice:':2'|upper }}",
+            email: "{{ u.email|default:''|escapejs }}",
+            avatar_color: "{{ u.profile.avatar_color|default:'#0052cc' }}",
+            profile_image: "{{ u.profile.profile_image|default:'' }}"
+        }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
     </script>
 
     {% block extra_js %}{% endblock %}

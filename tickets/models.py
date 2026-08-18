@@ -96,6 +96,7 @@ from django.utils import timezone
 class Ticket(models.Model):
     ticket_id = models.AutoField(primary_key=True)
     ticket_code = models.CharField(max_length=50, unique=True)  # e.g., KAN-1, KAN-2
+    space = models.ForeignKey('TeamSetting', on_delete=models.CASCADE, null=True, blank=True, related_name='tickets')
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='created_tickets')
     category = models.ForeignKey(TicketCategory, on_delete=models.SET_NULL, null=True, blank=True, related_name='tickets')
     priority = models.ForeignKey(Priority, on_delete=models.SET_NULL, null=True, blank=True, related_name='tickets')
@@ -262,10 +263,15 @@ class Report(models.Model):
 
 class TeamSetting(models.Model):
     name = models.CharField(max_length=100, default='Team Vatana')
+    key = models.CharField(max_length=20, blank=True, null=True)  # e.g. KAN, ENG, MKT
+    space_type = models.CharField(max_length=100, default='Team-managed software')
+    lead = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='led_spaces')
+    members = models.ManyToManyField(User, blank=True, related_name='spaces')
     icon_type = models.CharField(max_length=20, default='preset')  # 'preset', 'custom', 'initials'
     icon_value = models.CharField(max_length=255, default='mountains')  # preset key or uploaded file path
     icon_bg_color = models.CharField(max_length=50, default='#0052cc')
     description = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -275,16 +281,22 @@ class TeamSetting(models.Model):
 
     @classmethod
     def get_settings(cls):
-        setting, _ = cls.objects.get_or_create(id=1, defaults={
-            'name': 'Team Vatana',
-            'icon_type': 'preset',
-            'icon_value': 'mountains',
-            'icon_bg_color': '#0052cc'
-        })
+        setting = cls.objects.first()
+        if not setting:
+            setting = cls.objects.create(
+                id=1,
+                name='Team Vatana',
+                key='KAN',
+                icon_type='preset',
+                icon_value='mountains',
+                icon_bg_color='#0052cc'
+            )
         return setting
 
     @property
     def ticket_prefix(self):
+        if self.key and self.key.strip():
+            return self.key.strip().upper()
         import re
         trimmed = (self.name or '').strip()
         clean = re.sub(r'^(team\s+|space\s+)', '', trimmed, flags=re.IGNORECASE).strip()

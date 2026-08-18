@@ -1,0 +1,447 @@
+{% extends "base.html" %}
+{% load team_tags %}
+
+{% block title %}Spaces - Jira{% endblock %}
+
+{% block content %}
+<style>
+/* SPACES DIRECTORY PAGE (EXACT JIRA SCREENSHOT REPLICA) */
+.spaces-page-container {
+    padding: 24px 36px 60px 36px;
+    max-width: 1400px;
+    margin: 0 auto;
+    width: 100%;
+    box-sizing: border-box;
+    overflow-y: auto;
+    height: 100%;
+    min-height: 0;
+    flex: 1;
+    animation: spacesFadeIn 0.2s ease-out;
+}
+
+@keyframes spacesFadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.spaces-page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.spaces-page-title {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--jira-text-dark);
+    margin: 0;
+}
+
+.spaces-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.btn-jira-primary {
+    background: #0052cc;
+    color: #ffffff;
+    border: none;
+    border-radius: 4px;
+    height: 36px;
+    padding: 0 16px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: background 0.15s ease;
+}
+
+.btn-jira-primary:hover {
+    background: #0047b3;
+}
+
+.btn-jira-secondary {
+    background: var(--jira-card-bg);
+    color: var(--jira-text-dark);
+    border: 1px solid var(--jira-border);
+    border-radius: 4px;
+    height: 36px;
+    padding: 0 14px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.btn-jira-secondary:hover {
+    background: rgba(9, 30, 66, 0.06);
+    border-color: var(--jira-border-hover);
+}
+
+[data-theme="dark"] .btn-jira-secondary:hover {
+    background: #282e33;
+}
+
+/* SEARCH & FILTER BAR */
+.spaces-filter-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.spaces-search-wrapper {
+    position: relative;
+    width: 280px;
+}
+
+.spaces-search-input {
+    width: 100%;
+    height: 36px;
+    padding-left: 32px;
+    padding-right: 12px;
+    font-size: 13px;
+    border-radius: 4px;
+    border: 1px solid var(--jira-border);
+    background: var(--jira-card-bg);
+    color: var(--jira-text-dark);
+    outline: none;
+    transition: border-color 0.15s ease;
+}
+
+.spaces-search-input:focus {
+    border-color: var(--jira-blue);
+}
+
+[data-theme="dark"] .spaces-search-input {
+    background: #1d1f21;
+    border-color: #282e33;
+    color: #dee4ea;
+}
+
+.spaces-search-icon {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--jira-text-muted);
+    pointer-events: none;
+}
+
+.spaces-app-filter-wrapper {
+    position: relative;
+    min-width: 180px;
+}
+
+.spaces-app-filter-select {
+    width: 100%;
+    height: 36px;
+    padding: 0 28px 0 12px;
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: 4px;
+    border: 1px solid var(--jira-border);
+    background: var(--jira-card-bg);
+    color: var(--jira-text-dark);
+    cursor: pointer;
+    outline: none;
+    appearance: none;
+}
+
+[data-theme="dark"] .spaces-app-filter-select {
+    background: #1d1f21;
+    border-color: #282e33;
+    color: #dee4ea;
+}
+
+/* SPACES TABLE */
+.spaces-table-wrapper {
+    background: var(--jira-card-bg);
+    border: 1px solid var(--jira-border);
+    border-radius: 8px;
+    box-shadow: var(--jira-card-shadow);
+    overflow: hidden;
+}
+
+.spaces-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    text-align: left;
+}
+
+.spaces-table th {
+    padding: 12px 16px;
+    background: var(--jira-column-bg);
+    color: var(--jira-text-muted);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--jira-border);
+    user-select: none;
+}
+
+.spaces-table td {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--jira-border);
+    color: var(--jira-text-dark);
+    vertical-align: middle;
+}
+
+.spaces-table tbody tr {
+    transition: background-color 0.15s ease;
+    cursor: pointer;
+}
+
+.spaces-table tbody tr:hover {
+    background-color: rgba(9, 30, 66, 0.04);
+}
+
+[data-theme="dark"] .spaces-table tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.04);
+}
+
+.spaces-table tbody tr.active-space-row {
+    background-color: rgba(0, 82, 204, 0.05);
+}
+
+[data-theme="dark"] .spaces-table tbody tr.active-space-row {
+    background-color: rgba(87, 157, 255, 0.08);
+}
+
+.space-name-link {
+    color: #0052cc;
+    font-weight: 600;
+    font-size: 14px;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+}
+
+[data-theme="dark"] .space-name-link {
+    color: #579dff;
+}
+
+.space-lead-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.lead-avatar-disc {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    color: #ffffff;
+    font-size: 10px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.lead-avatar-disc img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* PAGINATION MATCHING SCREENSHOT */
+.spaces-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 24px;
+}
+
+.pagination-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    border: 1px solid var(--jira-border);
+    background: var(--jira-card-bg);
+    color: var(--jira-text-dark);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.pagination-btn.active {
+    background: #0052cc;
+    color: #ffffff;
+    border-color: #0052cc;
+}
+
+[data-theme="dark"] .pagination-btn.active {
+    background: #579dff;
+    color: #161a1d;
+    border-color: #579dff;
+}
+
+/* LIMIT REACHED BADGE */
+.space-limit-notice {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--jira-text-muted);
+    background: rgba(9, 30, 66, 0.05);
+    padding: 6px 12px;
+    border-radius: 4px;
+}
+[data-theme="dark"] .space-limit-notice {
+    background: #282e33;
+}
+</style>
+
+<div class="spaces-page-container">
+    <!-- PAGE HEADER -->
+    <div class="spaces-page-header">
+        <h1 class="spaces-page-title">Spaces</h1>
+
+        <div class="spaces-header-actions">
+            {% if can_create_space %}
+            <button type="button" class="btn-jira-primary" onclick="openCreateSpaceModal()" title="Create space (Max 3 allowed)">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                <span>Create space</span>
+            </button>
+            {% else %}
+                {% if is_admin %}
+                <span class="space-limit-notice" title="Maximum of 3 spaces is reached">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    <span>Maximum 3 spaces limit reached</span>
+                </span>
+                {% endif %}
+            {% endif %}
+            <button type="button" class="btn-jira-secondary" onclick="openTemplatesModal()" title="Browse Jira Templates">
+                <span>Templates</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- SEARCH & FILTER BAR -->
+    <div class="spaces-filter-bar">
+        <div class="spaces-search-wrapper">
+            <svg class="spaces-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="spacesSearchInput" class="spaces-search-input" placeholder="Search spaces" oninput="filterSpacesTable()">
+        </div>
+
+        <div class="spaces-app-filter-wrapper">
+            <select id="spacesAppFilterSelect" class="spaces-app-filter-select" onchange="filterSpacesTable()">
+                <option value="">Filter by app</option>
+                <option value="software">Jira Software</option>
+                <option value="service">Jira Service Management</option>
+                <option value="business">Jira Work Management</option>
+            </select>
+            <div style="position:absolute; right:10px; top:50%; transform:translateY(-50%); pointer-events:none; color:var(--jira-text-muted);">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+        </div>
+    </div>
+
+    <!-- SPACES TABLE -->
+    <div class="spaces-table-wrapper">
+        <table class="spaces-table" id="spacesListTable">
+            <thead>
+                <tr>
+                    <th style="width: 40px; text-align:center;">★</th>
+                    <th style="min-width: 260px;">Name ↓</th>
+                    <th style="width: 140px;">Key</th>
+                    <th style="width: 220px;">Type</th>
+                    <th style="width: 220px;">Lead</th>
+                    <th style="width: 120px; text-align:right;">Space URL</th>
+                </tr>
+            </thead>
+            <tbody id="spacesTableBody">
+                {% for sp in spaces %}
+                <tr onclick="window.location.href='{% url 'switch_space' sp.id %}'" class="{% if sp.is_active %}active-space-row{% endif %}" data-space-name="{{ sp.name|lower }}" data-space-key="{{ sp.key|lower }}">
+                    <td style="text-align:center; color: #ffab00;" onclick="event.stopPropagation();">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    </td>
+                    <td>
+                        <div class="space-name-link">
+                            <div style="width:24px; height:24px; border-radius:4px; overflow:hidden; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:800;">
+                                {% render_team_avatar sp.icon_type sp.icon_value sp.initials sp.icon_bg_color %}
+                            </div>
+                            <span>{{ sp.name }}</span>
+                            {% if sp.is_active %}
+                            <span style="font-size:10px; font-weight:700; background:#0052cc; color:#ffffff; padding:1px 6px; border-radius:4px;">ACTIVE</span>
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td style="font-weight: 600; color: var(--jira-text-muted);">{{ sp.key }}</td>
+                    <td style="color: var(--jira-text-muted);">{{ sp.space_type }}</td>
+                    <td>
+                        <div class="space-lead-cell">
+                            <div class="lead-avatar-disc" style="background: {{ sp.lead_avatar_color }};">
+                                {% if sp.lead_image %}
+                                <img src="{{ sp.lead_image }}" alt="">
+                                {% else %}
+                                {{ sp.lead_initials }}
+                                {% endif %}
+                            </div>
+                            <span style="font-weight: 500;">{{ sp.lead_name }}</span>
+                        </div>
+                    </td>
+                    <td style="text-align: right;" onclick="event.stopPropagation();">
+                        <div style="display:inline-flex; align-items:center; gap:6px;">
+                            <button type="button" class="icon-btn" onclick="openAddSpaceMembersModal({{ sp.id }}, '{{ sp.name|escapejs }}')" title="Add people to {{ sp.name }}">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+                            </button>
+                            <button type="button" class="icon-btn" onclick="window.location.href='{% url 'switch_space' sp.id %}'" title="Open Space Board">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- PAGINATION -->
+    <div class="spaces-pagination">
+        <button type="button" class="pagination-btn" disabled style="opacity:0.5; cursor:default;">&lt;</button>
+        <button type="button" class="pagination-btn active">1</button>
+        <button type="button" class="pagination-btn" disabled style="opacity:0.5; cursor:default;">&gt;</button>
+    </div>
+</div>
+
+<script>
+function filterSpacesTable() {
+    const q = document.getElementById('spacesSearchInput').value.trim().toLowerCase();
+    const rows = document.querySelectorAll('#spacesTableBody tr');
+    rows.forEach(r => {
+        const name = r.getAttribute('data-space-name') || '';
+        const key = r.getAttribute('data-space-key') || '';
+        if (!q || name.includes(q) || key.includes(q)) {
+            r.style.display = '';
+        } else {
+            r.style.display = 'none';
+        }
+    });
+}
+
+function openTemplatesModal() {
+    alert('Jira Software project templates are currently configured with default Scrum & Kanban agile workflows.');
+}
+</script>
+{% endblock %}

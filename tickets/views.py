@@ -589,8 +589,34 @@ def api_create_user(request):
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
+def get_active_space(request):
+    """Retrieve currently active space from session or GET parameter, with default fallback."""
+    active_space_id = None
+    if request:
+        if 'space_id' in request.GET:
+            try:
+                active_space_id = int(request.GET.get('space_id'))
+                if hasattr(request, 'session'):
+                    request.session['active_space_id'] = active_space_id
+            except (ValueError, TypeError):
+                pass
+        elif hasattr(request, 'session'):
+            active_space_id = request.session.get('active_space_id')
+
+    active_space = None
+    if active_space_id:
+        active_space = TeamSetting.objects.filter(id=active_space_id).first()
+
+    if not active_space:
+        active_space = TeamSetting.get_settings()
+        if request and hasattr(request, 'session'):
+            request.session['active_space_id'] = active_space.id
+    return active_space
+
+
 def get_board_columns_data(request):
-    """Retrieve board columns with tickets and counts based on filters."""
+    """Retrieve board columns with tickets and counts based on filters for the active space."""
+    active_space = get_active_space(request)
     statuses = TicketStatus.objects.all().order_by('order')
     categories = TicketCategory.objects.all()
     priorities = Priority.objects.all()
@@ -602,7 +628,7 @@ def get_board_columns_data(request):
     prio_filter = request.GET.get('priority', '')
     assignee_filter = request.GET.get('assignee', '')
 
-    tickets_qs = Ticket.objects.select_related(
+    tickets_qs = Ticket.objects.filter(space=active_space).select_related(
         'status', 'priority', 'category', 'user',
         'assigned_to', 'assigned_to__profile'
     ).all()
@@ -914,8 +940,9 @@ def for_you_view(request):
 
 @login_required
 def list_view(request):
-    """Render structured table view of tickets."""
-    tickets = Ticket.objects.select_related('status', 'priority', 'category', 'user', 'assigned_to', 'assigned_to__profile').all().order_by('-created_at')
+    """Render structured table view of tickets for the active space."""
+    active_space = get_active_space(request)
+    tickets = Ticket.objects.filter(space=active_space).select_related('status', 'priority', 'category', 'user', 'assigned_to', 'assigned_to__profile').all().order_by('-created_at')
     priorities = Priority.objects.all().order_by('priority_id')
     categories = TicketCategory.objects.all()
     statuses = TicketStatus.objects.all().order_by('order')
@@ -940,6 +967,7 @@ def list_view(request):
 
 def get_summary_metrics_data(request):
     """Compute all metric numbers, distributions, charts, and activities for Summary dashboard using optimized SQL aggregations."""
+    active_space = get_active_space(request)
     now = timezone.now()
     seven_days_ago = now - timedelta(days=7)
     today = timezone.localdate()
@@ -949,8 +977,8 @@ def get_summary_metrics_data(request):
     selected_assignees = request.GET.getlist('assignee')
     selected_statuses = request.GET.getlist('status')
 
-    # Base tickets queryset
-    tickets_qs = Ticket.objects.all()
+    # Base tickets queryset scoped to active space
+    tickets_qs = Ticket.objects.filter(space=active_space)
 
     # Apply Assignee Filter
     if selected_assignees:
@@ -1595,12 +1623,15 @@ def api_create_ticket(request):
         if not subject:
             return JsonResponse({'success': False, 'error': 'Subject is required.'}, status=400)
 
-        # Generate ticket code (e.g. COC-12)
-        team_setting = TeamSetting.get_settings()
-        prefix = team_setting.ticket_prefix
-        last_ticket = Ticket.objects.order_by('-ticket_id').first()
-        next_num = (last_ticket.ticket_id + 1) if last_ticket else 1
+        # Generate ticket code (e.g. KAN-1, ENG-1)
+        active_space = get_active_space(request)
+        prefix = active_space.ticket_prefix
+        space_tickets_count = Ticket.objects.filter(space=active_space).count()
+        next_num = space_tickets_count + 1
         ticket_code = f"{prefix}-{next_num}"
+        while Ticket.objects.filter(ticket_code=ticket_code).exists():
+            next_num += 1
+            ticket_code = f"{prefix}-{next_num}"
 
         user = request.user if hasattr(request, 'user') and request.user.is_authenticated else User.objects.first()
 
@@ -1610,6 +1641,7 @@ def api_create_ticket(request):
         assigned_to = User.objects.filter(pk=assigned_to_id).first() if assigned_to_id else None
 
         ticket = Ticket.objects.create(
+            space=active_space,
             ticket_code=ticket_code,
             subject=subject,
             description=description,
@@ -2888,6 +2920,288 @@ def api_procurement_report_data(request):
             'filters': report_data['filters'],
             'count': len(report_data['tickets'])
         })
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+def spaces_list_view(request):
+    """
+    Render the Spaces directory page matching Jira screenshot.
+    Lists all created spaces (up to 3 max), their keys, types, leads, and action buttons.
+    """
+    all_spaces = TeamSetting.objects.select_related('lead', 'lead__profile').prefetch_related('members').all().order_by('id')
+    current_profile = getattr(request.user, 'profile', None)
+    is_admin = request.user.is_superuser or bool(current_profile and current_profile.role and current_profile.role.role_name in ['Admin', 'Administrator'])
+    active_space = get_active_space(request)
+
+    spaces_data = []
+    for sp in all_spaces:
+        lead_name = 'Unassigned'
+        lead_initials = 'UN'
+        lead_avatar_color = '#0052cc'
+        lead_image = ''
+        if sp.lead:
+            lprof = getattr(sp.lead, 'profile', None)
+            lfull = lprof.full_name.strip() if lprof and lprof.full_name else sp.lead.username
+            lparts = lfull.split()
+            lead_initials = (lparts[0][0] + lparts[-1][0]).upper() if len(lparts) >= 2 else lfull[:2].upper()
+            lead_name = lfull
+            lead_avatar_color = lprof.avatar_color if lprof and lprof.avatar_color else '#0052cc'
+            lead_image = lprof.profile_image if lprof and lprof.profile_image else ''
+
+        spaces_data.append({
+            'id': sp.id,
+            'name': sp.name,
+            'key': sp.ticket_prefix,
+            'space_type': sp.space_type or 'Team-managed software',
+            'lead_name': lead_name,
+            'lead_initials': lead_initials,
+            'lead_avatar_color': lead_avatar_color,
+            'lead_image': lead_image,
+            'icon_type': sp.icon_type,
+            'icon_value': sp.icon_value,
+            'icon_bg_color': sp.icon_bg_color,
+            'initials': sp.initials,
+            'tickets_count': sp.tickets.count(),
+            'members_count': sp.members.count(),
+            'is_active': (sp.id == active_space.id),
+        })
+
+    # For user selection in add people modal
+    all_users = User.objects.filter(is_active=True).select_related('profile').all().order_by('username')
+    user_options = []
+    for u in all_users:
+        uprof = getattr(u, 'profile', None)
+        dfull = uprof.full_name.strip() if uprof and uprof.full_name else u.username
+        uparts = dfull.split()
+        uinit = (uparts[0][0] + uparts[-1][0]).upper() if len(uparts) >= 2 else dfull[:2].upper()
+        user_options.append({
+            'id': u.id,
+            'username': u.username,
+            'name': dfull,
+            'initials': uinit,
+            'email': u.email or '',
+            'avatar_color': uprof.avatar_color if uprof and uprof.avatar_color else '#0052cc',
+            'profile_image': uprof.profile_image if uprof and uprof.profile_image else ''
+        })
+
+    context = {
+        'active_view': 'spaces',
+        'spaces': spaces_data,
+        'total_spaces_count': len(spaces_data),
+        'can_create_space': is_admin and len(spaces_data) < 3,
+        'is_admin': is_admin,
+        'user_options': user_options,
+    }
+    return render(request, 'tickets/spaces.html', context)
+
+
+@login_required
+def switch_space_view(request, space_id):
+    """Switch active space in user session and redirect to its board."""
+    space = get_object_or_404(TeamSetting, pk=space_id)
+    request.session['active_space_id'] = space.id
+    next_url = request.GET.get('next', '')
+    if next_url and next_url.startswith('/'):
+        return redirect(next_url)
+    return redirect('board')
+
+
+@csrf_exempt
+@require_POST
+def api_create_space(request):
+    """
+    Create a new space (Max 3 spaces limit).
+    Only Admin accounts can create spaces.
+    Initializes a new space with a fresh blank board.
+    """
+    if not request.user.is_authenticated:
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=401)
+
+    profile = getattr(request.user, 'profile', None)
+    is_admin = request.user.is_superuser or bool(profile and profile.role and profile.role.role_name in ['Admin', 'Administrator'])
+    if not is_admin:
+        return JsonResponse({'success': False, 'error': 'Permission denied. Only Administrators can create new spaces.'}, status=403)
+
+    if TeamSetting.objects.count() >= 3:
+        return JsonResponse({
+            'success': False,
+            'error': 'Maximum limit of 3 spaces reached. You cannot create more than 3 spaces.'
+        }, status=400)
+
+    try:
+        if request.content_type and 'application/json' in request.content_type:
+            data = json.loads(request.body)
+        else:
+            data = request.POST
+
+        name = data.get('name', '').strip()
+        if not name:
+            return JsonResponse({'success': False, 'error': 'Space name is required.'}, status=400)
+
+        # Check existing name
+        if TeamSetting.objects.filter(name__iexact=name).exists():
+            return JsonResponse({'success': False, 'error': f'A space named "{name}" already exists.'}, status=400)
+
+        raw_key = data.get('key', '').strip().upper()
+        if not raw_key:
+            clean_chars = ''.join([c for c in name if c.isalnum()]).upper()
+            raw_key = clean_chars[:3] if len(clean_chars) >= 3 else (clean_chars or 'SPC')
+        
+        key = raw_key
+        counter = 1
+        while TeamSetting.objects.filter(key__iexact=key).exists():
+            key = f"{raw_key[:2]}{counter}"
+            counter += 1
+
+        icon_type = data.get('icon_type', 'preset')
+        icon_value = data.get('icon_value', 'mountains')
+        icon_bg_color = data.get('icon_bg_color', '#0052cc')
+        description = data.get('description', '').strip()
+        space_type = data.get('space_type', 'Team-managed software')
+
+        new_space = TeamSetting.objects.create(
+            name=name,
+            key=key,
+            space_type=space_type,
+            lead=request.user,
+            icon_type=icon_type,
+            icon_value=icon_value,
+            icon_bg_color=icon_bg_color,
+            description=description
+        )
+
+        # Add creator to space members
+        new_space.members.add(request.user)
+
+        # Set as active space
+        request.session['active_space_id'] = new_space.id
+
+        return JsonResponse({
+            'success': True,
+            'message': f'Space "{new_space.name}" created successfully!',
+            'space': {
+                'id': new_space.id,
+                'name': new_space.name,
+                'key': new_space.ticket_prefix,
+                'initials': new_space.initials,
+                'icon_type': new_space.icon_type,
+                'icon_value': new_space.icon_value,
+                'icon_bg_color': new_space.icon_bg_color,
+            },
+            'redirect_url': '/board/'
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_POST
+def api_add_space_members(request, space_id):
+    """Add existing or new users to the specified space (Admin only)."""
+    if not request.user.is_authenticated:
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=401)
+
+    profile = getattr(request.user, 'profile', None)
+    is_admin = request.user.is_superuser or bool(profile and profile.role and profile.role.role_name in ['Admin', 'Administrator'])
+    if not is_admin:
+        return JsonResponse({'success': False, 'error': 'Only Administrators can add members to a space.'}, status=403)
+
+    space = get_object_or_404(TeamSetting, pk=space_id)
+
+    try:
+        data = json.loads(request.body)
+        existing_user_ids = data.get('user_ids', [])
+        
+        # 1. Add existing registered users
+        if existing_user_ids:
+            users_to_add = User.objects.filter(id__in=existing_user_ids)
+            space.members.add(*users_to_add)
+
+        # 2. Add brand new user if requested
+        new_user_data = data.get('new_user')
+        if new_user_data:
+            full_name = new_user_data.get('full_name', '').strip()
+            email = new_user_data.get('email', '').strip().lower()
+            password = new_user_data.get('password', '').strip()
+            role_name_input = new_user_data.get('role_name', 'Member').strip()
+
+            if email and password:
+                if User.objects.filter(email__iexact=email).exists():
+                    existing_u = User.objects.filter(email__iexact=email).first()
+                    space.members.add(existing_u)
+                else:
+                    base_username = email.split('@')[0]
+                    username = base_username
+                    counter = 1
+                    while User.objects.filter(username__iexact=username).exists():
+                        username = f"{base_username}{counter}"
+                        counter += 1
+
+                    user = User.objects.create_user(username=username, email=email, password=password)
+                    if full_name:
+                        name_parts = full_name.split()
+                        user.first_name = name_parts[0]
+                        if len(name_parts) > 1:
+                            user.last_name = " ".join(name_parts[1:])
+                        user.save()
+
+                    role_obj, _ = Role.objects.get_or_create(role_name=role_name_input)
+                    UserProfile.objects.create(
+                        user=user,
+                        role=role_obj,
+                        full_name=full_name or username,
+                        status='Active',
+                        is_email_verified=True,
+                        avatar_color='#0052cc'
+                    )
+                    space.members.add(user)
+
+        members_list = []
+        for m in space.members.select_related('profile').all():
+            mprof = getattr(m, 'profile', None)
+            mfull = mprof.full_name.strip() if mprof and mprof.full_name else m.username
+            mparts = mfull.split()
+            minit = (mparts[0][0] + mparts[-1][0]).upper() if len(mparts) >= 2 else mfull[:2].upper()
+            members_list.append({
+                'id': m.id,
+                'username': m.username,
+                'name': mfull,
+                'initials': minit,
+                'avatar_color': mprof.avatar_color if mprof and mprof.avatar_color else '#0052cc',
+                'profile_image': mprof.profile_image if mprof and mprof.profile_image else ''
+            })
+
+        return JsonResponse({
+            'success': True,
+            'message': f'Members updated successfully for {space.name}.',
+            'members': members_list,
+            'count': len(members_list)
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_POST
+def api_remove_space_member(request, space_id):
+    """Remove a user from the specified space (Admin only)."""
+    if not request.user.is_authenticated:
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=401)
+
+    profile = getattr(request.user, 'profile', None)
+    is_admin = request.user.is_superuser or bool(profile and profile.role and profile.role.role_name in ['Admin', 'Administrator'])
+    if not is_admin:
+        return JsonResponse({'success': False, 'error': 'Only Administrators can remove members from a space.'}, status=403)
+
+    space = get_object_or_404(TeamSetting, pk=space_id)
+    try:
+        data = json.loads(request.body)
+        user_id = data.get('user_id')
+        target_user = get_object_or_404(User, pk=user_id)
+        space.members.remove(target_user)
+        return JsonResponse({'success': True, 'message': f'{target_user.username} removed from {space.name}.'})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
