@@ -15,8 +15,10 @@ urlpatterns = [
     path('list/', views.list_view, name='list'),
     path('summary/', views.summary_view, name='summary'),
     path('teams/', views.teams_view, name='teams'),
+    path('reports/procurement/', views.procurement_report_view, name='procurement_report'),
 
     # APIs
+    path('api/reports/procurement/data/', views.api_procurement_report_data, name='api_procurement_report_data'),
     path('api/summary/', views.api_summary_metrics, name='api_summary_metrics'),
     path('api/board/data/', views.api_board_data, name='api_board_data'),
     path('api/board/sync/', views.api_board_sync, name='api_board_sync'),

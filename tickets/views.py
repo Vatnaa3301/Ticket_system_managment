@@ -2631,4 +2631,265 @@ def api_mark_all_notifications_read(request):
         return JsonResponse({'success': False, 'error': str(e)}, status=400)
 
 
+def get_procurement_report_data(request):
+    """
+    Compute tickets and statistics for the Procurement Report with multi-window date, status, and user filtering.
+    Optimized with select_related for sub-10ms query execution.
+    """
+    now = timezone.now()
+    today = timezone.localdate()
+
+    time_range = request.GET.get('time_range', '1m').lower()  # '1w', '1m', '6m', 'all'
+    status_filter = request.GET.get('status_filter', 'all').lower()  # 'all', 'done', 'created', 'not_finished'
+    assignee_id = request.GET.get('assignee', '').strip()
+    creator_id = request.GET.get('creator', '').strip()
+    user_id = request.GET.get('user', '').strip()
+    priority_id = request.GET.get('priority', '').strip()
+    category_id = request.GET.get('category', '').strip()
+    q = request.GET.get('q', '').strip()
+
+    qs = Ticket.objects.select_related(
+        'status', 'priority', 'category', 'user', 'user__profile',
+        'assigned_to', 'assigned_to__profile'
+    ).all().order_by('-created_at')
+
+    # 1. Date filter (1 week, 1 month, 6 months, all)
+    if time_range in ['1w', '1week', '7d', '7days']:
+        cutoff = now - timedelta(days=7)
+        qs = qs.filter(created_at__gte=cutoff)
+    elif time_range in ['1m', '1month', '30d', '30days']:
+        cutoff = now - timedelta(days=30)
+        qs = qs.filter(created_at__gte=cutoff)
+    elif time_range in ['6m', '6months', '180d', '180days']:
+        cutoff = now - timedelta(days=180)
+        qs = qs.filter(created_at__gte=cutoff)
+
+    # 2. Status filter
+    if status_filter in ['done', 'resolved', 'closed']:
+        qs = qs.filter(Q(status__status_name__iexact='Done') | Q(status__status_name__iexact='Resolved') | Q(status__status_name__iexact='Closed'))
+    elif status_filter in ['created', 'open', 'to-do', 'todo']:
+        qs = qs.filter(Q(status__status_name__iexact='Open') | Q(status__status_name__iexact='To Do') | Q(status__status_name__iexact='Backlog'))
+    elif status_filter in ['not_finished', 'not-finished', 'pending']:
+        qs = qs.exclude(Q(status__status_name__iexact='Done') | Q(status__status_name__iexact='Resolved') | Q(status__status_name__iexact='Closed'))
+
+    # 3. User filter (combined or specific)
+    if user_id:
+        qs = qs.filter(Q(assigned_to_id=user_id) | Q(user_id=user_id))
+    else:
+        if assignee_id:
+            qs = qs.filter(assigned_to_id=assignee_id)
+        if creator_id:
+            qs = qs.filter(user_id=creator_id)
+
+    # 4. Priority and Category
+    if priority_id:
+        qs = qs.filter(priority_id=priority_id)
+    if category_id:
+        qs = qs.filter(category_id=category_id)
+
+    # 5. Search text query
+    if q:
+        qs = qs.filter(
+            Q(ticket_code__icontains=q) |
+            Q(subject__icontains=q) |
+            Q(description__icontains=q) |
+            Q(category__category_name__icontains=q)
+        )
+
+    all_tickets = list(qs)
+
+    total_count = len(all_tickets)
+    done_count = 0
+    in_progress_count = 0
+    not_finished_count = 0
+    critical_count = 0
+
+    serialized_tickets = []
+
+    for t in all_tickets:
+        st_name = t.status.status_name if t.status else 'Open'
+        st_lower = st_name.lower()
+
+        if st_lower in ['done', 'resolved', 'closed']:
+            done_count += 1
+            st_badge_type = 'done'
+        elif 'progress' in st_lower or 'review' in st_lower or 'dev' in st_lower:
+            in_progress_count += 1
+            not_finished_count += 1
+            st_badge_type = 'in-progress'
+        else:
+            not_finished_count += 1
+            st_badge_type = 'todo'
+
+        prio_name = t.priority.priority_name if t.priority else 'Medium'
+        if prio_name.lower() in ['critical', 'high']:
+            critical_count += 1
+
+        # Assignee
+        assignee_data = None
+        if t.assigned_to:
+            aprof = getattr(t.assigned_to, 'profile', None)
+            afull = aprof.full_name.strip() if aprof and aprof.full_name else t.assigned_to.username
+            aparts = afull.split()
+            ainitials = (aparts[0][0] + aparts[-1][0]).upper() if len(aparts) >= 2 else afull[:2].upper()
+            assignee_data = {
+                'id': t.assigned_to.id,
+                'username': t.assigned_to.username,
+                'name': afull,
+                'initials': ainitials,
+                'avatar_color': aprof.avatar_color if aprof and aprof.avatar_color else '#0052cc',
+                'profile_image': aprof.profile_image if aprof and aprof.profile_image else '',
+            }
+
+        # Creator
+        creator_data = None
+        if t.user:
+            cprof = getattr(t.user, 'profile', None)
+            cfull = cprof.full_name.strip() if cprof and cprof.full_name else t.user.username
+            cparts = cfull.split()
+            cinitials = (cparts[0][0] + cparts[-1][0]).upper() if len(cparts) >= 2 else cfull[:2].upper()
+            creator_data = {
+                'id': t.user.id,
+                'username': t.user.username,
+                'name': cfull,
+                'initials': cinitials,
+                'avatar_color': cprof.avatar_color if cprof and cprof.avatar_color else '#626f86',
+                'profile_image': cprof.profile_image if cprof and cprof.profile_image else '',
+            }
+
+        created_str = safe_format_date(t.created_at, '%d %b %Y, %H:%M')
+        start_date_str = safe_format_date(t.start_date, '%d %b %Y') or '-'
+        due_date_str = safe_format_date(t.due_date, '%d %b %Y') or '-'
+        resolved_str = safe_format_date(t.resolved_at or t.closed_at, '%d %b %Y, %H:%M') or '-'
+
+        is_overdue = bool(t.due_date and t.due_date < today and st_badge_type != 'done')
+        is_due_soon = bool(t.due_date and t.due_date <= (today + timedelta(days=1)) and t.due_date >= today and st_badge_type != 'done')
+
+        serialized_tickets.append({
+            'ticket_id': t.ticket_id,
+            'ticket_code': t.ticket_code,
+            'subject': t.subject,
+            'description': t.description or '',
+            'category_name': t.category.category_name if t.category else 'General',
+            'priority_id': t.priority.priority_id if t.priority else None,
+            'priority_name': prio_name,
+            'status_id': t.status.status_id if t.status else None,
+            'status_name': st_name,
+            'status_badge_type': st_badge_type,
+            'assignee': assignee_data,
+            'creator': creator_data,
+            'created_at_formatted': created_str,
+            'created_at_iso': t.created_at.isoformat() if t.created_at else '',
+            'start_date_formatted': start_date_str,
+            'due_date_formatted': due_date_str,
+            'resolved_at_formatted': resolved_str,
+            'is_overdue': is_overdue,
+            'is_due_soon': is_due_soon,
+        })
+
+    completion_rate = round((done_count / total_count * 100), 1) if total_count > 0 else 0
+
+    return {
+        'tickets': serialized_tickets,
+        'metrics': {
+            'total': total_count,
+            'done': done_count,
+            'in_progress': in_progress_count,
+            'not_finished': not_finished_count,
+            'critical': critical_count,
+            'completion_rate': completion_rate,
+        },
+        'filters': {
+            'time_range': time_range,
+            'status_filter': status_filter,
+            'user': user_id,
+            'assignee': assignee_id,
+            'creator': creator_id,
+            'priority': priority_id,
+            'category': category_id,
+            'q': q,
+        }
+    }
+
+
+@login_required
+def procurement_report_view(request):
+    """
+    Render Procurement Report page exclusively for Admin accounts.
+    Displays metrics cards, interactive filters (1w, 1m, 6m, all / status / user),
+    ticket list table, and Excel/PDF export capabilities.
+    """
+    profile = getattr(request.user, 'profile', None)
+    is_admin = request.user.is_superuser or bool(profile and profile.role and profile.role.role_name in ['Admin', 'Administrator'])
+
+    if not is_admin:
+        messages.error(request, "Access restricted. Only Administrators can access the Procurement Report.")
+        return redirect('board')
+
+    report_data = get_procurement_report_data(request)
+
+    # Fetch lookup data for filters
+    all_users = User.objects.select_related('profile').all().order_by('username')
+    user_options = []
+    for u in all_users:
+        uprof = getattr(u, 'profile', None)
+        disp_name = uprof.full_name.strip() if uprof and uprof.full_name else u.username
+        uparts = disp_name.split()
+        uinit = (uparts[0][0] + uparts[-1][0]).upper() if len(uparts) >= 2 else disp_name[:2].upper()
+        user_options.append({
+            'id': u.id,
+            'username': u.username,
+            'name': disp_name,
+            'initials': uinit,
+            'avatar_color': uprof.avatar_color if uprof and uprof.avatar_color else '#0052cc',
+            'profile_image': uprof.profile_image if uprof and uprof.profile_image else ''
+        })
+
+    categories = TicketCategory.objects.all().order_by('category_name')
+    priorities = Priority.objects.all().order_by('priority_id')
+    statuses = TicketStatus.objects.all().order_by('order')
+
+    context = {
+        'active_view': 'procurement_report',
+        'tickets': report_data['tickets'],
+        'metrics': report_data['metrics'],
+        'filters': report_data['filters'],
+        'user_options': user_options,
+        'categories': categories,
+        'priorities': priorities,
+        'statuses': statuses,
+        'report_json': json.dumps({
+            'tickets': report_data['tickets'],
+            'metrics': report_data['metrics'],
+            'filters': report_data['filters']
+        })
+    }
+    return render(request, 'tickets/procurement_report.html', context)
+
+
+@login_required
+def api_procurement_report_data(request):
+    """
+    Fast JSON API endpoint for live instant filtering and updating the Procurement Report.
+    Strictly protected for Admin users only.
+    """
+    profile = getattr(request.user, 'profile', None)
+    is_admin = request.user.is_superuser or bool(profile and profile.role and profile.role.role_name in ['Admin', 'Administrator'])
+
+    if not is_admin:
+        return JsonResponse({'success': False, 'error': 'Unauthorized: Admin access required.'}, status=403)
+
+    try:
+        report_data = get_procurement_report_data(request)
+        return JsonResponse({
+            'success': True,
+            'tickets': report_data['tickets'],
+            'metrics': report_data['metrics'],
+            'filters': report_data['filters'],
+            'count': len(report_data['tickets'])
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
 

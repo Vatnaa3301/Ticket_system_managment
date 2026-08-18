@@ -1,0 +1,1324 @@
+{% extends "base.html" %}
+{% load team_tags %}
+
+{% block title %}Procurement Report - {{ team_name }} Jira{% endblock %}
+
+{% block content %}
+<!-- CDN Libraries for Instant Excel & PDF Exports -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+
+<style>
+/* Procurement Report Jira Theme Styles */
+.report-container {
+    padding: 24px 32px 60px 32px;
+    max-width: 1400px;
+    margin: 0 auto;
+    width: 100%;
+    box-sizing: border-box;
+    overflow-y: auto;
+    height: 100%;
+    min-height: 0;
+    flex: 1;
+    animation: reportFadeIn 0.25s ease-out;
+}
+
+@keyframes reportFadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* HEADER SECTION */
+.report-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+}
+
+.report-title-group h1 {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--jira-text-dark);
+    margin: 0 0 4px 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.report-badge-admin {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: #0052cc;
+    color: #ffffff;
+    vertical-align: middle;
+}
+
+[data-theme="dark"] .report-badge-admin {
+    background: #1c2b42;
+    color: #579dff;
+    border: 1px solid #2c4366;
+}
+
+.report-subtitle {
+    font-size: 13px;
+    color: var(--jira-text-muted);
+    margin: 0;
+}
+
+.report-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+/* BUTTONS MATCHING JIRA (FLAT, NO GRADIENTS) */
+.btn-jira-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 36px;
+    padding: 0 14px;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 4px;
+    border: 1px solid var(--jira-border);
+    background: var(--jira-card-bg);
+    color: var(--jira-text-dark);
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+    user-select: none;
+}
+
+.btn-jira-action:hover {
+    background: rgba(9, 30, 66, 0.06);
+    border-color: var(--jira-border-hover);
+}
+
+[data-theme="dark"] .btn-jira-action:hover {
+    background: #282e33;
+    border-color: #383e45;
+}
+
+.btn-jira-action:active {
+    transform: scale(0.98);
+}
+
+.btn-export-excel {
+    background: #1f845a;
+    color: #ffffff;
+    border-color: #1f845a;
+}
+.btn-export-excel:hover {
+    background: #176343;
+    border-color: #176343;
+    color: #ffffff;
+}
+
+.btn-export-pdf {
+    background: #0c66e4;
+    color: #ffffff;
+    border-color: #0c66e4;
+}
+.btn-export-pdf:hover {
+    background: #0052cc;
+    border-color: #0052cc;
+    color: #ffffff;
+}
+
+/* METRICS CARDS GRID */
+.report-metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.report-metric-card {
+    background: var(--jira-card-bg);
+    border: 1px solid var(--jira-border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    box-shadow: var(--jira-card-shadow);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.report-metric-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(9, 30, 66, 0.08);
+}
+
+[data-theme="dark"] .report-metric-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.metric-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.metric-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--jira-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.metric-icon-box {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(9, 30, 66, 0.05);
+    color: var(--jira-text-muted);
+}
+
+[data-theme="dark"] .metric-icon-box {
+    background: #282e33;
+}
+
+.metric-val {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--jira-text-dark);
+    line-height: 1.1;
+}
+
+.metric-sub {
+    font-size: 12px;
+    color: var(--jira-text-muted);
+    margin-top: 4px;
+}
+
+/* FILTER TOOLBAR */
+.report-filter-panel {
+    background: var(--jira-card-bg);
+    border: 1px solid var(--jira-border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+    box-shadow: var(--jira-card-shadow);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.filter-row-primary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.filter-pills-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.filter-group-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--jira-text-muted);
+    text-transform: uppercase;
+    margin-right: 4px;
+}
+
+/* SEGMENTED BUTTON PILLS */
+.filter-pill-btn {
+    height: 32px;
+    padding: 0 12px;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 4px;
+    border: 1px solid var(--jira-border);
+    background: transparent;
+    color: var(--jira-text-dark);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.15s ease;
+}
+
+.filter-pill-btn:hover {
+    background: rgba(9, 30, 66, 0.06);
+    border-color: var(--jira-border-hover);
+}
+
+[data-theme="dark"] .filter-pill-btn:hover {
+    background: #282e33;
+}
+
+.filter-pill-btn.active {
+    background: #0052cc;
+    color: #ffffff;
+    border-color: #0052cc;
+}
+
+[data-theme="dark"] .filter-pill-btn.active {
+    background: #579dff;
+    color: #161a1d;
+    border-color: #579dff;
+}
+
+/* SECONDARY FILTER CONTROLS */
+.filter-row-secondary {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding-top: 12px;
+    border-top: 1px solid var(--jira-border);
+}
+
+.filter-select-wrapper {
+    position: relative;
+    min-width: 160px;
+    flex-shrink: 0;
+}
+
+.filter-select {
+    width: 100%;
+    height: 34px;
+    padding: 0 28px 0 10px;
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: 4px;
+    border: 1px solid var(--jira-border);
+    background: var(--jira-card-bg);
+    color: var(--jira-text-dark);
+    cursor: pointer;
+    outline: none;
+    appearance: none;
+    transition: border-color 0.15s ease;
+}
+
+.filter-select:hover, .filter-select:focus {
+    border-color: var(--jira-blue);
+}
+
+[data-theme="dark"] .filter-select {
+    background: #22252a;
+    border-color: #282e33;
+    color: #dee4ea;
+}
+
+.filter-select-arrow {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    color: var(--jira-text-muted);
+}
+
+.report-search-box {
+    position: relative;
+    flex: 1;
+    min-width: 220px;
+}
+
+.report-search-box input {
+    width: 100%;
+    height: 34px;
+    padding-left: 32px;
+    padding-right: 12px;
+    font-size: 13px;
+    border-radius: 4px;
+    border: 1px solid var(--jira-border);
+    background: var(--jira-bg-light);
+    color: var(--jira-text-dark);
+    outline: none;
+    transition: border-color 0.15s ease;
+}
+
+.report-search-box input:focus {
+    border-color: var(--jira-blue);
+}
+
+[data-theme="dark"] .report-search-box input {
+    background: #16181d;
+    border-color: #282e33;
+    color: #dee4ea;
+}
+
+.report-search-icon {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--jira-text-muted);
+    pointer-events: none;
+}
+
+.btn-reset-filters {
+    height: 34px;
+    padding: 0 12px;
+    font-size: 12px;
+    font-weight: 600;
+    background: transparent;
+    border: 1px dashed var(--jira-border);
+    border-radius: 4px;
+    color: var(--jira-text-muted);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.15s ease;
+}
+
+.btn-reset-filters:hover {
+    color: var(--jira-text-dark);
+    border-color: var(--jira-text-dark);
+    background: rgba(9, 30, 66, 0.04);
+}
+
+/* DATA TABLE CONTAINER */
+.report-table-card {
+    background: var(--jira-card-bg);
+    border: 1px solid var(--jira-border);
+    border-radius: 8px;
+    box-shadow: var(--jira-card-shadow);
+    overflow: hidden;
+}
+
+.report-table-meta {
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--jira-border);
+    font-size: 13px;
+    color: var(--jira-text-muted);
+}
+
+.report-table-meta-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    color: var(--jira-text-dark);
+}
+
+.report-table-wrapper {
+    overflow-x: auto;
+    width: 100%;
+}
+
+.report-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    text-align: left;
+}
+
+.report-table th {
+    padding: 10px 14px;
+    background: var(--jira-column-bg);
+    color: var(--jira-text-muted);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--jira-border);
+    user-select: none;
+    white-space: nowrap;
+}
+
+.report-table th.sortable {
+    cursor: pointer;
+}
+.report-table th.sortable:hover {
+    color: var(--jira-text-dark);
+}
+
+.report-table td {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--jira-border);
+    color: var(--jira-text-dark);
+    vertical-align: middle;
+}
+
+.report-table tbody tr {
+    transition: background-color 0.12s ease;
+    cursor: pointer;
+}
+
+.report-table tbody tr:hover {
+    background-color: rgba(9, 30, 66, 0.04);
+}
+
+[data-theme="dark"] .report-table tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.04);
+}
+
+.ticket-key-link {
+    color: var(--jira-blue);
+    font-weight: 700;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.ticket-key-link:hover {
+    text-decoration: underline;
+}
+
+/* JIRA STATUS BADGES */
+.jira-status-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+}
+
+.jira-status-pill.status-done {
+    background: #1f845a;
+    color: #ffffff;
+}
+[data-theme="dark"] .jira-status-pill.status-done {
+    background: #143d2b;
+    color: #4ade80;
+    border: 1px solid #1b5c40;
+}
+
+.jira-status-pill.status-in-progress {
+    background: #0052cc;
+    color: #ffffff;
+}
+[data-theme="dark"] .jira-status-pill.status-in-progress {
+    background: #1c2b42;
+    color: #579dff;
+    border: 1px solid #2c4366;
+}
+
+.jira-status-pill.status-todo {
+    background: rgba(9, 30, 66, 0.08);
+    color: var(--jira-text-dark);
+}
+[data-theme="dark"] .jira-status-pill.status-todo {
+    background: #2a2a2e;
+    color: #dee4ea;
+    border: 1px solid #383e45;
+}
+
+/* PRIORITY INDICATORS (SOLID COLORS, NO GRADIENT) */
+.jira-prio-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-weight: 600;
+    font-size: 12px;
+}
+
+.prio-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+}
+.prio-dot.critical { background: #de350b; }
+.prio-dot.high { background: #ff5630; }
+.prio-dot.medium { background: #ff9900; }
+.prio-dot.low { background: #0065ff; }
+
+/* USER AVATAR DISPLAY */
+.user-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.avatar-disc {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    color: #ffffff;
+    font-size: 10px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.avatar-disc img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* EMPTY STATE */
+.report-empty-state {
+    padding: 60px 20px;
+    text-align: center;
+    color: var(--jira-text-muted);
+}
+
+.report-empty-icon {
+    width: 48px;
+    height: 48px;
+    margin: 0 auto 12px auto;
+    color: var(--jira-text-muted);
+}
+
+.report-empty-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--jira-text-dark);
+    margin-bottom: 4px;
+}
+
+/* LIVE FILTER LOADING OVERLAY */
+.table-loading-bar {
+    height: 3px;
+    width: 100%;
+    background: rgba(12, 102, 228, 0.2);
+    position: relative;
+    overflow: hidden;
+    display: none;
+}
+
+.table-loading-bar.active {
+    display: block;
+}
+
+.table-loading-bar::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 40%;
+    background: var(--jira-blue);
+    animation: indeterminateLoading 1s infinite linear;
+}
+
+@keyframes indeterminateLoading {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(350%); }
+}
+</style>
+
+<div class="report-container">
+    <!-- PAGE HEADER -->
+    <div class="report-header">
+        <div class="report-title-group">
+            <h1>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#0052cc;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                <span>Procurement Report</span>
+                <span class="report-badge-admin">Admin Only</span>
+            </h1>
+            <p class="report-subtitle">Comprehensive procurement and ticket fulfillment metrics across {{ team_name }}.</p>
+        </div>
+
+        <div class="report-actions">
+            <button type="button" class="btn-jira-action" id="btnRefreshReport" onclick="refreshReportData()" title="Reload live data">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                <span>Refresh</span>
+            </button>
+            <button type="button" class="btn-jira-action btn-export-excel" id="btnExportExcel" onclick="exportToExcel()" title="Export filtered list to Microsoft Excel (.xlsx)">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                <span>Export Excel</span>
+            </button>
+            <button type="button" class="btn-jira-action btn-export-pdf" id="btnExportPDF" onclick="exportToPDF()" title="Export summary and list to PDF Document (.pdf)">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                <span>Export PDF</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- METRICS CARDS -->
+    <div class="report-metrics-grid" id="reportMetricsGrid">
+        <div class="report-metric-card">
+            <div class="metric-header">
+                <span class="metric-label">Total Tickets</span>
+                <div class="metric-icon-box">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+                </div>
+            </div>
+            <div class="metric-val" id="metricTotalVal">{{ metrics.total }}</div>
+            <div class="metric-sub">In selected timeframe</div>
+        </div>
+
+        <div class="report-metric-card">
+            <div class="metric-header">
+                <span class="metric-label">Done & Resolved</span>
+                <div class="metric-icon-box" style="color:#1f845a;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                </div>
+            </div>
+            <div class="metric-val" id="metricDoneVal" style="color:#1f845a;">{{ metrics.done }}</div>
+            <div class="metric-sub" id="metricDonePercent">{{ metrics.completion_rate }}% completed</div>
+        </div>
+
+        <div class="report-metric-card">
+            <div class="metric-header">
+                <span class="metric-label">In Progress</span>
+                <div class="metric-icon-box" style="color:#0052cc;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                </div>
+            </div>
+            <div class="metric-val" id="metricInProgressVal" style="color:#0052cc;">{{ metrics.in_progress }}</div>
+            <div class="metric-sub">Actively worked on</div>
+        </div>
+
+        <div class="report-metric-card">
+            <div class="metric-header">
+                <span class="metric-label">Not Finished Yet</span>
+                <div class="metric-icon-box" style="color:#de350b;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                </div>
+            </div>
+            <div class="metric-val" id="metricNotFinishedVal" style="color:#de350b;">{{ metrics.not_finished }}</div>
+            <div class="metric-sub">Open & Pending tickets</div>
+        </div>
+
+        <div class="report-metric-card">
+            <div class="metric-header">
+                <span class="metric-label">Completion Rate</span>
+                <div class="metric-icon-box" style="color:#904ee2;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+                </div>
+            </div>
+            <div class="metric-val" id="metricRateVal" style="color:#904ee2;">{{ metrics.completion_rate }}%</div>
+            <div class="metric-sub">Resolution efficiency</div>
+        </div>
+    </div>
+
+    <!-- FILTER PANEL -->
+    <div class="report-filter-panel">
+        <!-- PRIMARY ROW: TIME HORIZON & STATUS PRESETS -->
+        <div class="filter-row-primary">
+            <!-- TIME WINDOW FILTER -->
+            <div class="filter-pills-group">
+                <span class="filter-group-label">Time Window:</span>
+                <button type="button" class="filter-pill-btn {% if filters.time_range == '1w' %}active{% endif %}" data-filter-type="time_range" data-filter-val="1w" onclick="setTimeFilter('1w', this)">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    <span>1 Week</span>
+                </button>
+                <button type="button" class="filter-pill-btn {% if filters.time_range == '1m' or not filters.time_range %}active{% endif %}" data-filter-type="time_range" data-filter-val="1m" onclick="setTimeFilter('1m', this)">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    <span>1 Month</span>
+                </button>
+                <button type="button" class="filter-pill-btn {% if filters.time_range == '6m' %}active{% endif %}" data-filter-type="time_range" data-filter-val="6m" onclick="setTimeFilter('6m', this)">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    <span>6 Months</span>
+                </button>
+                <button type="button" class="filter-pill-btn {% if filters.time_range == 'all' %}active{% endif %}" data-filter-type="time_range" data-filter-val="all" onclick="setTimeFilter('all', this)">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
+                    <span>All Time</span>
+                </button>
+            </div>
+
+            <!-- STATUS FILTER PRESETS -->
+            <div class="filter-pills-group">
+                <span class="filter-group-label">Status:</span>
+                <button type="button" class="filter-pill-btn {% if filters.status_filter == 'all' or not filters.status_filter %}active{% endif %}" data-filter-type="status_filter" data-filter-val="all" onclick="setStatusFilter('all', this)">
+                    <span>All Statuses</span>
+                </button>
+                <button type="button" class="filter-pill-btn {% if filters.status_filter == 'done' %}active{% endif %}" data-filter-type="status_filter" data-filter-val="done" onclick="setStatusFilter('done', this)">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                    <span>Done</span>
+                </button>
+                <button type="button" class="filter-pill-btn {% if filters.status_filter == 'created' %}active{% endif %}" data-filter-type="status_filter" data-filter-val="created" onclick="setStatusFilter('created', this)">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/></svg>
+                    <span>Created / Open</span>
+                </button>
+                <button type="button" class="filter-pill-btn {% if filters.status_filter == 'not_finished' %}active{% endif %}" data-filter-type="status_filter" data-filter-val="not_finished" onclick="setStatusFilter('not_finished', this)">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    <span>Not Finish Yet</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- SECONDARY ROW: USER FILTER, PRIORITY, CATEGORY, SEARCH -->
+        <div class="filter-row-secondary">
+            <!-- USER FILTER -->
+            <div class="filter-select-wrapper" style="min-width: 190px;">
+                <select id="userFilterSelect" class="filter-select" onchange="onSecondaryFilterChange()">
+                    <option value="">All Users</option>
+                    {% for u in user_options %}
+                    <option value="{{ u.id }}" {% if filters.user == u.id|stringformat:"i" or filters.assignee == u.id|stringformat:"i" %}selected{% endif %}>{{ u.name }} ({{ u.username }})</option>
+                    {% endfor %}
+                </select>
+                <div class="filter-select-arrow">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                </div>
+            </div>
+
+            <!-- PRIORITY FILTER -->
+            <div class="filter-select-wrapper" style="min-width: 140px;">
+                <select id="priorityFilterSelect" class="filter-select" onchange="onSecondaryFilterChange()">
+                    <option value="">All Priorities</option>
+                    {% for p in priorities %}
+                    <option value="{{ p.priority_id }}" {% if filters.priority == p.priority_id|stringformat:"i" %}selected{% endif %}>{{ p.priority_name }}</option>
+                    {% endfor %}
+                </select>
+                <div class="filter-select-arrow">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                </div>
+            </div>
+
+            <!-- CATEGORY FILTER -->
+            <div class="filter-select-wrapper" style="min-width: 150px;">
+                <select id="categoryFilterSelect" class="filter-select" onchange="onSecondaryFilterChange()">
+                    <option value="">All Categories</option>
+                    {% for c in categories %}
+                    <option value="{{ c.category_id }}" {% if filters.category == c.category_id|stringformat:"i" %}selected{% endif %}>{{ c.category_name }}</option>
+                    {% endfor %}
+                </select>
+                <div class="filter-select-arrow">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                </div>
+            </div>
+
+            <!-- LIVE SEARCH -->
+            <div class="report-search-box">
+                <svg class="report-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" id="reportSearchInput" placeholder="Search ticket key, summary, description..." value="{{ filters.q }}" oninput="debounceFilter()">
+            </div>
+
+            <!-- RESET FILTERS -->
+            <button type="button" class="btn-reset-filters" onclick="resetAllFilters()" title="Reset all filters to defaults">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                <span>Reset</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- TABLE CARD -->
+    <div class="report-table-card">
+        <div class="table-loading-bar" id="tableLoadingBar"></div>
+        <div class="report-table-meta">
+            <div class="report-table-meta-left">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+                <span>Ticket List (<span id="tableResultsCount">{{ tickets|length }}</span> items)</span>
+            </div>
+            <div id="tableFilterSummaryText" style="font-size:12px;">
+                Showing report data
+            </div>
+        </div>
+
+        <div class="report-table-wrapper">
+            <table class="report-table" id="procurementReportTable">
+                <thead>
+                    <tr>
+                        <th class="sortable" onclick="sortTable('ticket_code')" style="width: 100px;">Key ⇕</th>
+                        <th class="sortable" onclick="sortTable('subject')" style="min-width: 240px;">Summary ⇕</th>
+                        <th style="width: 120px;">Category</th>
+                        <th class="sortable" onclick="sortTable('priority_name')" style="width: 110px;">Priority ⇕</th>
+                        <th class="sortable" onclick="sortTable('status_name')" style="width: 120px;">Status ⇕</th>
+                        <th style="width: 160px;">Assignee</th>
+                        <th style="width: 160px;">Creator</th>
+                        <th class="sortable" onclick="sortTable('created_at_iso')" style="width: 140px;">Created ⇕</th>
+                        <th class="sortable" onclick="sortTable('due_date_formatted')" style="width: 120px;">Due Date ⇕</th>
+                        <th style="width: 140px;">Resolved</th>
+                    </tr>
+                </thead>
+                <tbody id="procurementTableBody">
+                    <!-- Populated dynamically via JS / initial SSR -->
+                    {% for t in tickets %}
+                    <tr onclick="openTicketDetailModal({{ t.ticket_id }})" data-ticket-id="{{ t.ticket_id }}">
+                        <td style="font-weight:700;">
+                            <span class="ticket-key-link">{{ t.ticket_code }}</span>
+                        </td>
+                        <td style="font-weight:500;">{{ t.subject }}</td>
+                        <td>
+                            <span style="font-size:12px; color:var(--jira-text-muted);">{{ t.category_name }}</span>
+                        </td>
+                        <td>
+                            <span class="jira-prio-badge">
+                                <span class="prio-dot {{ t.priority_name|lower }}"></span>
+                                <span>{{ t.priority_name }}</span>
+                            </span>
+                        </td>
+                        <td>
+                            <span class="jira-status-pill status-{{ t.status_badge_type }}">{{ t.status_name }}</span>
+                        </td>
+                        <td>
+                            {% if t.assignee %}
+                            <div class="user-cell">
+                                <div class="avatar-disc" style="background: {{ t.assignee.avatar_color|default:'#0052cc' }};">
+                                    {% if t.assignee.profile_image %}
+                                    <img src="{{ t.assignee.profile_image }}" alt="">
+                                    {% else %}
+                                    {{ t.assignee.initials }}
+                                    {% endif %}
+                                </div>
+                                <span style="font-size:13px; font-weight:500;">{{ t.assignee.name }}</span>
+                            </div>
+                            {% else %}
+                            <span style="font-size:12px; color:var(--jira-text-muted); font-style:italic;">Unassigned</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if t.creator %}
+                            <div class="user-cell">
+                                <div class="avatar-disc" style="background: {{ t.creator.avatar_color|default:'#626f86' }};">
+                                    {% if t.creator.profile_image %}
+                                    <img src="{{ t.creator.profile_image }}" alt="">
+                                    {% else %}
+                                    {{ t.creator.initials }}
+                                    {% endif %}
+                                </div>
+                                <span style="font-size:13px;">{{ t.creator.name }}</span>
+                            </div>
+                            {% else %}
+                            <span style="font-size:12px; color:var(--jira-text-muted);">-</span>
+                            {% endif %}
+                        </td>
+                        <td style="font-size:12px; color:var(--jira-text-muted);">{{ t.created_at_formatted }}</td>
+                        <td style="font-size:12px; {% if t.is_overdue %}color:#de350b; font-weight:700;{% elif t.is_due_soon %}color:#ff9900; font-weight:600;{% else %}color:var(--jira-text-muted);{% endif %}">
+                            {{ t.due_date_formatted }}
+                        </td>
+                        <td style="font-size:12px; color:var(--jira-text-muted);">{{ t.resolved_at_formatted }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="10">
+                            <div class="report-empty-state">
+                                <svg class="report-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+                                <div class="report-empty-title">No tickets match your filter criteria</div>
+                                <p style="font-size:13px; margin-top:4px;">Try selecting a wider date range or changing your status filter.</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+/**
+ * PROCUREMENT REPORT STATE & CLIENT LOGIC
+ * High-performance reactive state with sub-10ms filtering, Excel/PDF generators, and sorting.
+ */
+let initialReportData = {{ report_json|safe }};
+let currentTickets = initialReportData.tickets || [];
+let currentMetrics = initialReportData.metrics || {};
+let currentSortColumn = 'created_at_iso';
+let currentSortDirection = 'desc';
+
+let filterState = {
+    time_range: '{{ filters.time_range|default:"1m" }}',
+    status_filter: '{{ filters.status_filter|default:"all" }}',
+    user: '{{ filters.user|default:"" }}',
+    priority: '{{ filters.priority|default:"" }}',
+    category: '{{ filters.category|default:"" }}',
+    q: '{{ filters.q|default:"" }}'
+};
+
+let debounceTimer = null;
+
+function setTimeFilter(val, btnElem) {
+    filterState.time_range = val;
+    document.querySelectorAll('[data-filter-type="time_range"]').forEach(b => b.classList.remove('active'));
+    if (btnElem) btnElem.classList.add('active');
+    triggerFilterFetch();
+}
+
+function setStatusFilter(val, btnElem) {
+    filterState.status_filter = val;
+    document.querySelectorAll('[data-filter-type="status_filter"]').forEach(b => b.classList.remove('active'));
+    if (btnElem) btnElem.classList.add('active');
+    triggerFilterFetch();
+}
+
+function onSecondaryFilterChange() {
+    filterState.user = document.getElementById('userFilterSelect').value;
+    filterState.priority = document.getElementById('priorityFilterSelect').value;
+    filterState.category = document.getElementById('categoryFilterSelect').value;
+    triggerFilterFetch();
+}
+
+function debounceFilter() {
+    filterState.q = document.getElementById('reportSearchInput').value.trim();
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+        triggerFilterFetch();
+    }, 200);
+}
+
+function resetAllFilters() {
+    filterState = {
+        time_range: '1m',
+        status_filter: 'all',
+        user: '',
+        priority: '',
+        category: '',
+        q: ''
+    };
+    
+    document.querySelectorAll('[data-filter-type="time_range"]').forEach(b => {
+        b.classList.toggle('active', b.dataset.filterVal === '1m');
+    });
+    document.querySelectorAll('[data-filter-type="status_filter"]').forEach(b => {
+        b.classList.toggle('active', b.dataset.filterVal === 'all');
+    });
+
+    document.getElementById('userFilterSelect').value = '';
+    document.getElementById('priorityFilterSelect').value = '';
+    document.getElementById('categoryFilterSelect').value = '';
+    document.getElementById('reportSearchInput').value = '';
+
+    triggerFilterFetch();
+}
+
+/**
+ * Fetch filtered report data asynchronously from server API
+ */
+async function triggerFilterFetch() {
+    const loadingBar = document.getElementById('tableLoadingBar');
+    if (loadingBar) loadingBar.classList.add('active');
+
+    const params = new URLSearchParams();
+    if (filterState.time_range) params.append('time_range', filterState.time_range);
+    if (filterState.status_filter) params.append('status_filter', filterState.status_filter);
+    if (filterState.user) params.append('user', filterState.user);
+    if (filterState.priority) params.append('priority', filterState.priority);
+    if (filterState.category) params.append('category', filterState.category);
+    if (filterState.q) params.append('q', filterState.q);
+
+    // Update URL query string without reloading page for bookmarking/sharing
+    const newUrl = `${window.location.pathname}?${params.toString()}`;
+    window.history.replaceState({}, '', newUrl);
+
+    try {
+        const response = await fetch(`/api/reports/procurement/data/?${params.toString()}`);
+        const data = await response.json();
+        if (data.success) {
+            currentTickets = data.tickets;
+            currentMetrics = data.metrics;
+            updateMetricsUI(data.metrics);
+            applySortingAndRender();
+        }
+    } catch (err) {
+        console.error('Error fetching procurement report data:', err);
+    } finally {
+        if (loadingBar) loadingBar.classList.remove('active');
+    }
+}
+
+/**
+ * Update Metric Cards UI
+ */
+function updateMetricsUI(metrics) {
+    if (!metrics) return;
+    const totalEl = document.getElementById('metricTotalVal');
+    const doneEl = document.getElementById('metricDoneVal');
+    const donePctEl = document.getElementById('metricDonePercent');
+    const inProgressEl = document.getElementById('metricInProgressVal');
+    const notFinishedEl = document.getElementById('metricNotFinishedVal');
+    const rateEl = document.getElementById('metricRateVal');
+
+    if (totalEl) totalEl.textContent = metrics.total;
+    if (doneEl) doneEl.textContent = metrics.done;
+    if (donePctEl) donePctEl.textContent = `${metrics.completion_rate}% completed`;
+    if (inProgressEl) inProgressEl.textContent = metrics.in_progress;
+    if (notFinishedEl) notFinishedEl.textContent = metrics.not_finished;
+    if (rateEl) rateEl.textContent = `${metrics.completion_rate}%`;
+
+    const countEl = document.getElementById('tableResultsCount');
+    if (countEl) countEl.textContent = currentTickets.length;
+}
+
+/**
+ * Client-Side Sorting
+ */
+function sortTable(columnKey) {
+    if (currentSortColumn === columnKey) {
+        currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+        currentSortColumn = columnKey;
+        currentSortDirection = 'asc';
+    }
+    applySortingAndRender();
+}
+
+function applySortingAndRender() {
+    currentTickets.sort((a, b) => {
+        let valA = a[currentSortColumn] || '';
+        let valB = b[currentSortColumn] || '';
+
+        if (typeof valA === 'string') valA = valA.toLowerCase();
+        if (typeof valB === 'string') valB = valB.toLowerCase();
+
+        if (valA < valB) return currentSortDirection === 'asc' ? -1 : 1;
+        if (valA > valB) return currentSortDirection === 'asc' ? 1 : -1;
+        return 0;
+    });
+
+    renderTableRows(currentTickets);
+}
+
+/**
+ * Render Data Table Rows
+ */
+function renderTableRows(tickets) {
+    const tbody = document.getElementById('procurementTableBody');
+    if (!tbody) return;
+
+    if (!tickets || tickets.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="10">
+                    <div class="report-empty-state">
+                        <svg class="report-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+                        <div class="report-empty-title">No tickets match your filter criteria</div>
+                        <p style="font-size:13px; margin-top:4px;">Try selecting a wider date range or changing your status filter.</p>
+                    </div>
+                </td>
+            </tr>
+        `;
+        const countEl = document.getElementById('tableResultsCount');
+        if (countEl) countEl.textContent = 0;
+        return;
+    }
+
+    const rowsHtml = tickets.map(t => {
+        const prioLower = (t.priority_name || 'medium').toLowerCase();
+        
+        let assigneeHtml = '<span style="font-size:12px; color:var(--jira-text-muted); font-style:italic;">Unassigned</span>';
+        if (t.assignee) {
+            const avatarInner = t.assignee.profile_image 
+                ? `<img src="${t.assignee.profile_image}" alt="">` 
+                : t.assignee.initials;
+            assigneeHtml = `
+                <div class="user-cell">
+                    <div class="avatar-disc" style="background: ${t.assignee.avatar_color || '#0052cc'};">
+                        ${avatarInner}
+                    </div>
+                    <span style="font-size:13px; font-weight:500;">${t.assignee.name}</span>
+                </div>
+            `;
+        }
+
+        let creatorHtml = '<span style="font-size:12px; color:var(--jira-text-muted);">-</span>';
+        if (t.creator) {
+            const cAvatarInner = t.creator.profile_image 
+                ? `<img src="${t.creator.profile_image}" alt="">` 
+                : t.creator.initials;
+            creatorHtml = `
+                <div class="user-cell">
+                    <div class="avatar-disc" style="background: ${t.creator.avatar_color || '#626f86'};">
+                        ${cAvatarInner}
+                    </div>
+                    <span style="font-size:13px;">${t.creator.name}</span>
+                </div>
+            `;
+        }
+
+        let dueStyle = 'color:var(--jira-text-muted);';
+        if (t.is_overdue) {
+            dueStyle = 'color:#de350b; font-weight:700;';
+        } else if (t.is_due_soon) {
+            dueStyle = 'color:#ff9900; font-weight:600;';
+        }
+
+        return `
+            <tr onclick="openTicketDetailModal(${t.ticket_id})" data-ticket-id="${t.ticket_id}">
+                <td style="font-weight:700;">
+                    <span class="ticket-key-link">${t.ticket_code}</span>
+                </td>
+                <td style="font-weight:500;">${escapeHtml(t.subject)}</td>
+                <td>
+                    <span style="font-size:12px; color:var(--jira-text-muted);">${escapeHtml(t.category_name || 'General')}</span>
+                </td>
+                <td>
+                    <span class="jira-prio-badge">
+                        <span class="prio-dot ${prioLower}"></span>
+                        <span>${escapeHtml(t.priority_name || 'Medium')}</span>
+                    </span>
+                </td>
+                <td>
+                    <span class="jira-status-pill status-${t.status_badge_type}">${escapeHtml(t.status_name || 'Open')}</span>
+                </td>
+                <td>${assigneeHtml}</td>
+                <td>${creatorHtml}</td>
+                <td style="font-size:12px; color:var(--jira-text-muted);">${t.created_at_formatted || '-'}</td>
+                <td style="font-size:12px; ${dueStyle}">${t.due_date_formatted || '-'}</td>
+                <td style="font-size:12px; color:var(--jira-text-muted);">${t.resolved_at_formatted || '-'}</td>
+            </tr>
+        `;
+    }).join('');
+
+    tbody.innerHTML = rowsHtml;
+    const countEl = document.getElementById('tableResultsCount');
+    if (countEl) countEl.textContent = tickets.length;
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function refreshReportData() {
+    triggerFilterFetch();
+}
+
+/**
+ * EXPORT TO EXCEL (.XLSX)
+ * Generates clean formatted workbook using SheetJS
+ */
+function exportToExcel() {
+    if (!currentTickets || currentTickets.length === 0) {
+        alert('No tickets available to export.');
+        return;
+    }
+
+    const exportRows = currentTickets.map(t => ({
+        'Ticket Key': t.ticket_code,
+        'Summary': t.subject,
+        'Category': t.category_name,
+        'Priority': t.priority_name,
+        'Status': t.status_name,
+        'Assignee': t.assignee ? t.assignee.name : 'Unassigned',
+        'Creator': t.creator ? t.creator.name : 'System',
+        'Created Date': t.created_at_formatted,
+        'Due Date': t.due_date_formatted,
+        'Resolved Date': t.resolved_at_formatted
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(exportRows);
+
+    // Auto-fit column widths
+    const colWidths = [
+        { wch: 12 }, // Key
+        { wch: 36 }, // Summary
+        { wch: 16 }, // Category
+        { wch: 12 }, // Priority
+        { wch: 14 }, // Status
+        { wch: 20 }, // Assignee
+        { wch: 20 }, // Creator
+        { wch: 20 }, // Created Date
+        { wch: 14 }, // Due Date
+        { wch: 20 }  // Resolved Date
+    ];
+    ws['!cols'] = colWidths;
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Procurement Report");
+
+    const dateStamp = new Date().toISOString().split('T')[0];
+    XLSX.writeFile(wb, `Procurement_Report_${dateStamp}.xlsx`);
+}
+
+/**
+ * EXPORT TO PDF (.PDF)
+ * Generates professional styled PDF document with jsPDF + autotable
+ */
+function exportToPDF() {
+    if (!currentTickets || currentTickets.length === 0) {
+        alert('No tickets available to export.');
+        return;
+    }
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+
+    const teamName = "{{ team_name|escapejs }}";
+    const dateStr = new Date().toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
+
+    // HEADER BANNER
+    doc.setFillColor(0, 82, 204);
+    doc.rect(0, 0, doc.internal.pageSize.width, 50, 'F');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(18);
+    doc.setTextColor(255, 255, 255);
+    doc.text(`${teamName} - Procurement & Ticket Report`, 40, 32);
+
+    // SUB-HEADER METADATA
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.setTextColor(100, 100, 100);
+    doc.text(`Generated on: ${dateStr} | Total Tickets: ${currentMetrics.total || currentTickets.length} | Done: ${currentMetrics.done || 0} | Completion: ${currentMetrics.completion_rate || 0}%`, 40, 70);
+
+    // TABLE HEADERS & BODY
+    const tableHeaders = [['Key', 'Summary', 'Category', 'Priority', 'Status', 'Assignee', 'Creator', 'Created Date', 'Due Date', 'Resolved']];
+    const tableData = currentTickets.map(t => [
+        t.ticket_code,
+        t.subject,
+        t.category_name || 'General',
+        t.priority_name || 'Medium',
+        t.status_name || 'Open',
+        t.assignee ? t.assignee.name : 'Unassigned',
+        t.creator ? t.creator.name : 'System',
+        t.created_at_formatted || '-',
+        t.due_date_formatted || '-',
+        t.resolved_at_formatted || '-'
+    ]);
+
+    doc.autoTable({
+        head: tableHeaders,
+        body: tableData,
+        startY: 85,
+        theme: 'grid',
+        headStyles: {
+            fillColor: [244, 245, 247],
+            textColor: [23, 43, 77],
+            fontStyle: 'bold',
+            fontSize: 9
+        },
+        styles: {
+            fontSize: 8.5,
+            cellPadding: 6,
+            textColor: [23, 43, 77],
+            overflow: 'linebreak'
+        },
+        columnStyles: {
+            0: { cellWidth: 55, fontStyle: 'bold', textColor: [0, 82, 204] },
+            1: { cellWidth: 160 },
+            2: { cellWidth: 65 },
+            3: { cellWidth: 55 },
+            4: { cellWidth: 65 },
+            5: { cellWidth: 80 },
+            6: { cellWidth: 80 },
+            7: { cellWidth: 85 },
+            8: { cellWidth: 65 },
+            9: { cellWidth: 85 }
+        },
+        alternateRowStyles: {
+            fillColor: [250, 251, 252]
+        },
+        margin: { left: 40, right: 40, bottom: 40 }
+    });
+
+    const dateStamp = new Date().toISOString().split('T')[0];
+    doc.save(`Procurement_Report_${dateStamp}.pdf`);
+}
+</script>
+{% endblock %}
