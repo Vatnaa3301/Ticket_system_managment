@@ -56,7 +56,7 @@
     <div class="teams-filter-bar">
         <div class="search-input-wrapper" style="position:relative; width:320px;">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--jira-text-muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position:absolute; left:12px; top:13px;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input type="text" id="teamMemberSearch" placeholder="Search members by name or email..." class="form-control" style="padding-left:34px; height:38px; font-size:13px;">
+            <input type="search" id="teamMemberSearch" name="team_member_search_box" placeholder="Search members by name or email..." class="form-control" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" style="padding-left:34px; height:38px; font-size:13px;">
         </div>
         {% if not is_admin %}
         <div style="font-size:12px; color:var(--jira-text-muted); display:flex; align-items:center; gap:6px;">

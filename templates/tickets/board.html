@@ -45,10 +45,10 @@
 <!-- SECONDARY TOOLBAR -->
 <div class="board-toolbar">
     <div class="toolbar-left">
-        <form id="boardFilterForm" action="" method="GET" style="display:flex; gap:8px; align-items:center;" onsubmit="event.preventDefault(); fetchBoardData(true);">
+        <form id="boardFilterForm" action="" method="GET" autocomplete="off" style="display:flex; gap:8px; align-items:center;" onsubmit="event.preventDefault(); fetchBoardData(true);">
             <div style="position:relative;">
                 <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="position:absolute; left:8px; top:9px; color:var(--jira-text-muted);"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                <input type="text" id="boardSearchInput" name="q" class="board-search-input" placeholder="Search board" value="{{ query|default:'' }}" oninput="debounceBoardSearch()">
+                <input type="search" id="boardSearchInput" name="board_search_q" class="board-search-input" placeholder="Search board" value="{{ query|default:'' }}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" oninput="debounceBoardSearch()">
             </div>
             
             <select id="boardCatFilter" name="category" class="filter-select" onchange="fetchBoardData(true)">

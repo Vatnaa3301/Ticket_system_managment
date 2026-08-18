@@ -48,6 +48,16 @@
     <script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
 
     <link rel="stylesheet" href="{% static 'css/jira-theme.css' %}?v=20260816">
+    <style>
+        /* Normalize search inputs and disable browser autofill decoration artifacts */
+        input[type="search"]::-webkit-search-decoration,
+        input[type="search"]::-webkit-search-cancel-button,
+        input[type="search"]::-webkit-search-results-button,
+        input[type="search"]::-webkit-search-results-decoration {
+            display: none;
+            -webkit-appearance: none;
+        }
+    </style>
 </head>
 
 <body>
@@ -79,7 +89,7 @@
             <div class="search-box-wrapper" style="position:relative;">
                 <div class="search-box" id="globalSearchBoxContainer">
                     <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                    <input type="text" id="globalSearchInput" placeholder="Search Jira" autocomplete="off">
+                    <input type="search" id="globalSearchInput" name="jira_global_search_box" placeholder="Search Jira" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other">
                 </div>
 
                 <!-- JIRA GLOBAL SEARCH DROPDOWN -->
@@ -775,20 +785,24 @@
                 </div>
                 <button type="button" class="btn-close btn-close-user-modal" onclick="closeAddUserModal()" style="background:none; border:none; color:var(--jira-text-muted); font-size:22px; cursor:pointer; line-height:1;">&times;</button>
             </div>
-            <form id="addUserForm" onsubmit="handleCreateUserSubmit(event)">
+            <form id="addUserForm" onsubmit="handleCreateUserSubmit(event)" autocomplete="off">
+                <!-- Anti-autofill decoy inputs to prevent browser hijacking search boxes -->
+                <input style="display:none" type="text" name="fakeusernameremembered" autocomplete="off"/>
+                <input style="display:none" type="password" name="fakepasswordremembered" autocomplete="off"/>
+
                 <div class="modal-body" style="padding:0; display:flex; flex-direction:column; gap:16px;">
                     <div id="addUserAlert" style="display:none; padding:10px 14px; border-radius:6px; font-size:13px;"></div>
                     
                     <!-- Full Name field -->
                     <div class="form-group">
                         <label style="font-size:12px; font-weight:700; color:var(--jira-text-muted); margin-bottom:6px; display:block;">Full Name</label>
-                        <input type="text" id="addFullname" class="form-control" placeholder="e.g., Maria Gonzalez" style="height:38px; font-size:13px; border-radius:4px;">
+                        <input type="text" id="addFullname" class="form-control" placeholder="e.g., Maria Gonzalez" autocomplete="off" style="height:38px; font-size:13px; border-radius:4px;">
                     </div>
 
                     <!-- Email Address field -->
                     <div class="form-group">
                         <label style="font-size:12px; font-weight:700; color:var(--jira-text-muted); margin-bottom:6px; display:block;">Email Address <span style="color:#ff5630;">*</span></label>
-                        <input type="email" id="addEmail" class="form-control" placeholder="e.g., maria@company.com" required style="height:38px; font-size:13px; border-radius:4px;">
+                        <input type="email" id="addEmail" class="form-control" placeholder="e.g., maria@company.com" required autocomplete="off" style="height:38px; font-size:13px; border-radius:4px;">
                     </div>
 
                     <!-- Password field with eye toggle -->
@@ -798,7 +812,7 @@
                             <span style="font-size:11px; font-weight:500; color:var(--jira-text-muted);">Min. 6 characters</span>
                         </label>
                         <div style="position:relative; display:flex; align-items:center;">
-                            <input type="password" id="addPassword" class="form-control" placeholder="Enter initial password" required minlength="6" style="height:38px; font-size:13px; border-radius:4px; padding-right:40px;">
+                            <input type="password" id="addPassword" class="form-control" placeholder="Enter initial password" required minlength="6" autocomplete="new-password" style="height:38px; font-size:13px; border-radius:4px; padding-right:40px;">
                             <button type="button" onclick="toggleAddUserPassword()" title="Show/Hide Password" style="position:absolute; right:10px; background:none; border:none; color:var(--jira-text-muted); cursor:pointer; padding:4px; display:flex; align-items:center;">
                                 <svg id="addUserPasswordEyeIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                             </button>
@@ -2498,7 +2512,7 @@
                 <div id="panelAddExistingUsers">
                     <div style="position:relative; margin-bottom:14px;">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position:absolute; left:10px; top:11px; color:var(--jira-text-muted);"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                        <input type="text" id="spaceExistingUserSearch" placeholder="Search people by name or email..." class="form-control" style="width:100%; height:36px; padding-left:32px; font-size:13px; border-radius:4px; border:1px solid var(--jira-border); background:var(--jira-bg-light); color:var(--jira-text-dark); outline:none;" oninput="filterExistingUsersList(this.value)">
+                        <input type="search" id="spaceExistingUserSearch" name="space_existing_user_search_field" placeholder="Search people by name or email..." class="form-control" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" style="width:100%; height:36px; padding-left:32px; font-size:13px; border-radius:4px; border:1px solid var(--jira-border); background:var(--jira-bg-light); color:var(--jira-text-dark); outline:none;" oninput="filterExistingUsersList(this.value)">
                     </div>
 
                     <div id="existingUsersScrollList" style="max-height:220px; overflow-y:auto; border:1px solid var(--jira-border); border-radius:4px; padding:4px 0;">
@@ -2508,13 +2522,17 @@
 
                 <!-- TAB 2: INVITE NEW USER -->
                 <div id="panelAddNewUser" style="display:none;">
+                    <!-- Anti-autofill decoy inputs -->
+                    <input style="display:none" type="text" name="fakeusernameremembered" autocomplete="off"/>
+                    <input style="display:none" type="password" name="fakepasswordremembered" autocomplete="off"/>
+
                     <div style="margin-bottom:12px;">
                         <label style="font-size:12px; font-weight:700; color:var(--jira-text-dark); display:block; margin-bottom:4px;">Full Name</label>
-                        <input type="text" id="spaceNewUserFullName" class="form-control" placeholder="e.g. Alex Smith" style="width:100%; height:36px; padding:0 12px; font-size:13px; border-radius:4px; border:1px solid var(--jira-border); background:var(--jira-bg-light); color:var(--jira-text-dark); outline:none;">
+                        <input type="text" id="spaceNewUserFullName" class="form-control" placeholder="e.g. Alex Smith" autocomplete="off" style="width:100%; height:36px; padding:0 12px; font-size:13px; border-radius:4px; border:1px solid var(--jira-border); background:var(--jira-bg-light); color:var(--jira-text-dark); outline:none;">
                     </div>
                     <div style="margin-bottom:12px;">
                         <label style="font-size:12px; font-weight:700; color:var(--jira-text-dark); display:block; margin-bottom:4px;">Email Address <span style="color:#ff5630;">*</span></label>
-                        <input type="email" id="spaceNewUserEmail" class="form-control" placeholder="alex@company.com" style="width:100%; height:36px; padding:0 12px; font-size:13px; border-radius:4px; border:1px solid var(--jira-border); background:var(--jira-bg-light); color:var(--jira-text-dark); outline:none;">
+                        <input type="email" id="spaceNewUserEmail" class="form-control" placeholder="alex@company.com" autocomplete="off" style="width:100%; height:36px; padding:0 12px; font-size:13px; border-radius:4px; border:1px solid var(--jira-border); background:var(--jira-bg-light); color:var(--jira-text-dark); outline:none;">
                     </div>
                     <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
                         <div>
@@ -2528,7 +2546,7 @@
                         </div>
                         <div>
                             <label style="font-size:12px; font-weight:700; color:var(--jira-text-dark); display:block; margin-bottom:4px;">Password <span style="color:#ff5630;">*</span></label>
-                            <input type="password" id="spaceNewUserPassword" class="form-control" placeholder="Min 6 chars" style="width:100%; height:36px; padding:0 12px; font-size:13px; border-radius:4px; border:1px solid var(--jira-border); background:var(--jira-bg-light); color:var(--jira-text-dark); outline:none;">
+                            <input type="password" id="spaceNewUserPassword" class="form-control" placeholder="Min 6 chars" autocomplete="new-password" style="width:100%; height:36px; padding:0 12px; font-size:13px; border-radius:4px; border:1px solid var(--jira-border); background:var(--jira-bg-light); color:var(--jira-text-dark); outline:none;">
                         </div>
                     </div>
                 </div>
