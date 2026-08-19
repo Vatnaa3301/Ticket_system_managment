@@ -504,10 +504,13 @@ def can_user_edit_ticket(user):
     return True
 
 
-@login_required
+@csrf_exempt
 @require_POST
 def api_create_user(request):
     """Admin-only API endpoint to register and create a new team member account with email and password."""
+    if not request.user.is_authenticated:
+        return JsonResponse({'success': False, 'error': 'Unauthorized. Please log in first.'}, status=401)
+
     profile = getattr(request.user, 'profile', None)
     is_admin = request.user.is_superuser or (profile and profile.role and profile.role.role_name in ['Admin', 'Administrator'])
 

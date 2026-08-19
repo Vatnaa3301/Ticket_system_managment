@@ -459,6 +459,20 @@
         }
     };
 
+    // Helper to get CSRF cookie
+    function getCsrfToken() {
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, 10) === 'csrftoken=') {
+                    return decodeURIComponent(cookie.substring(10));
+                }
+            }
+        }
+        return '';
+    }
+
     // Explicit Save function for Admin
     window.saveMemberRole = async function(userId) {
         const select = document.getElementById(`role-select-${userId}`);
@@ -473,7 +487,10 @@
         try {
             const res = await fetch(`/api/users/${userId}/update-role/`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                },
                 body: JSON.stringify({ role_name: newRole })
             });
             const data = await res.json();
@@ -508,7 +525,10 @@
         try {
             const res = await fetch(`/api/users/${userId}/remove/`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                },
                 body: JSON.stringify({ space_id: spaceId })
             });
             const data = await res.json();
@@ -578,7 +598,10 @@
         try {
             const res = await fetch(`/api/spaces/${spaceId}/members/add/`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                },
                 body: JSON.stringify({ user_ids: selectedValues })
             });
             const data = await res.json();
@@ -610,7 +633,10 @@
         try {
             const res = await fetch('/api/users/create/', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                },
                 body: JSON.stringify({
                     full_name: fullName,
                     email: email,
@@ -620,7 +646,15 @@
                     space_id: spaceId || undefined
                 })
             });
-            const data = await res.json();
+
+            let data;
+            const text = await res.text();
+            try {
+                data = JSON.parse(text);
+            } catch (jsonErr) {
+                throw new Error(res.status === 403 ? 'Permission denied or CSRF session expired. Please refresh the page.' : `Server returned status ${res.status}`);
+            }
+
             if (data.success) {
                 window.location.reload();
             } else {
