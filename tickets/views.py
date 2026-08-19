@@ -4,10 +4,37 @@ import pusher
 import resend
 from datetime import date, timedelta, datetime
 from django.db.models import Q, Count
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.utils import timezone
 from django.utils.timesince import timesince
 from django.shortcuts import render, get_object_or_404, redirect
+
+KAOLA_FAVICON_SVG = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#4a90e2" />
+      <stop offset="100%" stop-color="#2d72d9" />
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="28" fill="url(#bgGrad)" />
+  <circle cx="43" cy="56" r="18" fill="#e8f2ff" />
+  <circle cx="85" cy="56" r="18" fill="#e8f2ff" />
+  <circle cx="43" cy="56" r="11" fill="#ffffff" opacity="0.95" />
+  <circle cx="85" cy="56" r="11" fill="#ffffff" opacity="0.95" />
+  <ellipse cx="64" cy="73" rx="28" ry="24" fill="#b5d6ff" />
+  <circle cx="53" cy="67" r="3.6" fill="#0b1a30" />
+  <circle cx="75" cy="67" r="3.6" fill="#0b1a30" />
+  <circle cx="54.2" cy="65.8" r="1.2" fill="#ffffff" />
+  <circle cx="76.2" cy="65.8" r="1.2" fill="#ffffff" />
+  <ellipse cx="64" cy="73.5" rx="6.8" ry="10" fill="#0b1626" />
+  <ellipse cx="62.5" cy="70" rx="2" ry="3.5" fill="#2d4873" opacity="0.5" />
+</svg>"""
+
+def favicon_view(request):
+    """Serve the Kaola favicon directly with correct MIME type and long cache headers."""
+    response = HttpResponse(KAOLA_FAVICON_SVG.strip(), content_type='image/svg+xml')
+    response['Cache-Control'] = 'public, max-age=86400'
+    return response
 
 pusher_client = pusher.Pusher(
     app_id=os.environ.get('PUSHER_APP_ID', '2184711'),

@@ -2,6 +2,9 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
+    # Favicon
+    path('favicon.ico', views.favicon_view, name='favicon_ico'),
+
     # Auth Views
     path('login/', views.login_view, name='login'),
     path('signup/', views.signup_view, name='signup'),
