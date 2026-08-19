@@ -5,7 +5,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}{{ team_name }} - Jira{% endblock %}</title>
+    <title>{% block title %}{{ team_name }} - Kaola{% endblock %}</title>
+    <link rel="icon" type="image/svg+xml" href="{% static 'img/kaola-icon.svg' %}">
+    <link rel="icon" type="image/png" href="{% static 'img/kaola-icon.png' %}">
+    <link rel="shortcut icon" href="{% static 'img/kaola-icon.png' %}">
+    <link rel="apple-touch-icon" href="{% static 'img/kaola-icon.png' %}">
     <script>
         (function() {
             window.applyJiraTheme = function(theme) {
@@ -82,20 +86,20 @@
             <button class="icon-btn" title="App Switcher">
                 <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M4 4h4v4H4V4zm6 0h4v4h-4V4zm6 0h4v4h-4V4zM4 10h4v4H4v-4zm6 0h4v4h-4v-4zm6 0h4v4h-4v-4zM4 16h4v4H4v-4zm6 0h4v4h-4v-4zm6 0h4v4h-4v-4z"/></svg>
             </button>
-            <a href="{% url 'board' %}" class="jira-brand">
-                <div class="jira-brand-icon">J</div>
-                <span>Jira</span>
+            <a href="{% url 'board' %}" class="jira-brand" title="Kaola">
+                <img src="{% static 'img/kaola-icon.svg' %}" alt="Kaola" class="jira-brand-icon" style="width:24px; height:24px; border-radius:5px; object-fit:cover; display:inline-block; vertical-align:middle; margin-right:4px;">
+                <span>Kaola</span>
             </a>
             <div class="search-box-wrapper" style="position:relative;">
                 <div class="search-box" id="globalSearchBoxContainer">
                     <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                    <input type="search" id="globalSearchInput" name="jira_global_search_box" placeholder="Search Jira" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other">
+                    <input type="search" id="globalSearchInput" name="jira_global_search_box" placeholder="Search Kaola" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other">
                 </div>
 
-                <!-- JIRA GLOBAL SEARCH DROPDOWN -->
+                <!-- KAOLA GLOBAL SEARCH DROPDOWN -->
                 <div class="jira-global-search-dropdown" id="globalSearchDropdown" style="display:none;">
                     <div class="jira-search-tab-bar">
-                        <span class="jira-search-tab-item active">Jira</span>
+                        <span class="jira-search-tab-item active">Kaola</span>
                     </div>
                     <div class="jira-search-content">
                         <div class="jira-search-section-label" id="globalSearchSectionLabel">RECENTLY VIEWED</div>
@@ -2105,7 +2109,7 @@
                     document.querySelectorAll('.space-name, .global-team-name-text, .teams-heading-name, .space-card-title').forEach(el => {
                         el.textContent = name;
                     });
-                    if (document.title.includes(' - Jira')) {
+                    if (document.title.includes(' - Kaola') || document.title.includes(' - Jira')) {
                         document.title = document.title.replace(/^[^-]+ - /, `${name} - `);
                     }
                 }

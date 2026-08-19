@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load team_tags %}
 
-{% block title %}Spaces - Jira{% endblock %}
+{% block title %}Spaces - Kaola{% endblock %}
 
 {% block content %}
 <style>
@@ -331,7 +331,7 @@
                 </span>
                 {% endif %}
             {% endif %}
-            <button type="button" class="btn-jira-secondary" onclick="openTemplatesModal()" title="Browse Jira Templates">
+            <button type="button" class="btn-jira-secondary" onclick="openTemplatesModal()" title="Browse Kaola Templates">
                 <span>Templates</span>
             </button>
         </div>
@@ -347,9 +347,9 @@
         <div class="spaces-app-filter-wrapper">
             <select id="spacesAppFilterSelect" class="spaces-app-filter-select" onchange="filterSpacesTable()">
                 <option value="">Filter by app</option>
-                <option value="software">Jira Software</option>
-                <option value="service">Jira Service Management</option>
-                <option value="business">Jira Work Management</option>
+                <option value="software">Kaola Software</option>
+                <option value="service">Kaola Service Management</option>
+                <option value="business">Kaola Work Management</option>
             </select>
             <div style="position:absolute; right:10px; top:50%; transform:translateY(-50%); pointer-events:none; color:var(--jira-text-muted);">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
@@ -460,7 +460,7 @@ function filterSpacesTable() {
 }
 
 function openTemplatesModal() {
-    alert('Jira Software project templates are currently configured with default Scrum & Kanban agile workflows.');
+    alert('Kaola Software project templates are currently configured with default Scrum & Kanban agile workflows.');
 }
 
 function toggleSpaceRowMenu(spaceId, event) {

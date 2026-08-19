@@ -49,16 +49,16 @@ def send_verification_email(request, user):
     display_name = profile.full_name or user.username
     team_setting = TeamSetting.get_settings()
     team_name = team_setting.name
-    subject = f"Verify your email address for {team_name} Jira"
+    subject = f"Verify your email address for {team_name} Kaola"
 
     html_content = f"""
     <div style="font-family: Arial, sans-serif; max-width: 580px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden; background-color: #ffffff;">
         <div style="background-color: #0052cc; color: #ffffff; padding: 22px 24px;">
-            <h2 style="margin: 0; font-size: 20px; font-weight: 700;">{team_name} Jira</h2>
+            <h2 style="margin: 0; font-size: 20px; font-weight: 700;">{team_name} Kaola</h2>
         </div>
         <div style="padding: 28px 24px; color: #172b4d; line-height: 1.6;">
             <p style="font-size: 15px; margin-top: 0;">Hi <strong>{display_name}</strong>,</p>
-            <p style="font-size: 14px;">Welcome to <strong>{team_name} Jira</strong>! Please verify your email address to complete your registration and start receiving ticket notifications.</p>
+            <p style="font-size: 14px;">Welcome to <strong>{team_name} Kaola</strong>! Please verify your email address to complete your registration and start receiving ticket notifications.</p>
             
             <div style="text-align: center; margin: 26px 0;">
                 <a href="{verify_url}" style="background-color: #0052cc; color: #ffffff; text-decoration: none; padding: 12px 28px; font-weight: bold; font-size: 14px; border-radius: 4px; display: inline-block;" target="_blank">Verify Email Address</a>
@@ -68,7 +68,7 @@ def send_verification_email(request, user):
             <div style="background: #f4f5f7; padding: 10px; border-radius: 4px; font-size: 12px; color: #0052cc; word-break: break-all; border: 1px solid #e0e0e0;">{verify_url}</div>
         </div>
         <div style="background-color: #fafbfc; border-top: 1px solid #ebecf0; padding: 16px 24px; text-align: center; font-size: 12px; color: #6b778c;">
-            &copy; 2026 {team_name} Jira. All rights reserved.
+            &copy; 2026 {team_name} Kaola. All rights reserved.
         </div>
     </div>
     """
@@ -94,8 +94,8 @@ def send_verification_email(request, user):
             from django.core.mail import send_mail
             send_mail(
                 subject=subject,
-                message=f"Hi {display_name},\n\nPlease verify your email address:\n{verify_url}\n\nTeam Vatana Jira",
-                from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'Team Vatana Jira <noreply@vatana-jira.com>'),
+                message=f"Hi {display_name},\n\nPlease verify your email address:\n{verify_url}\n\nTeam Vatana Kaola",
+                from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'Team Vatana Kaola <noreply@vatana-kaola.com>'),
                 recipient_list=[user.email],
                 html_message=html_content,
                 fail_silently=True
@@ -144,10 +144,10 @@ def send_assignment_email(ticket, assigned_user):
                     <p style="margin: 0; font-size: 14px;"><strong>Start Date:</strong> {start_date_str} | <strong>Due Date:</strong> {due_date_str}</p>
                 </div>
                 
-                <p style="font-size: 13px; color: #626f86; line-height: 1.5;">Log into your <strong>{team_name}</strong> Jira workspace to view the complete details, collaborate, and update progress.</p>
+                <p style="font-size: 13px; color: #626f86; line-height: 1.5;">Log into your <strong>{team_name}</strong> Kaola workspace to view the complete details, collaborate, and update progress.</p>
             </div>
             <div style="background-color: #fafbfc; border-top: 1px solid #ebecf0; padding: 14px 24px; text-align: center; font-size: 12px; color: #6b778c;">
-                &copy; 2026 {team_name} Jira System. All rights reserved.
+                &copy; 2026 {team_name} Kaola System. All rights reserved.
             </div>
         </div>
         """
@@ -174,10 +174,10 @@ def send_assignment_email(ticket, assigned_user):
         if not sent:
             try:
                 from django.core.mail import send_mail
-                from_addr = getattr(settings, 'DEFAULT_FROM_EMAIL', None) or f"{team_name} <noreply@vatana-jira.com>"
+                from_addr = getattr(settings, 'DEFAULT_FROM_EMAIL', None) or f"{team_name} <noreply@vatana-kaola.com>"
                 send_mail(
                     subject=subject,
-                    message=f"Hi {display_name},\n\nYou have been assigned to ticket {ticket.ticket_code}: {ticket.subject}\n\nLog in to {team_name} Jira to review it.",
+                    message=f"Hi {display_name},\n\nYou have been assigned to ticket {ticket.ticket_code}: {ticket.subject}\n\nLog in to {team_name} Kaola to review it.",
                     from_email=from_addr,
                     recipient_list=[assigned_user.email],
                     html_message=html_content,
@@ -380,7 +380,7 @@ def signup_view(request):
 
         # Automatically log the user in immediately
         login(request, user)
-        messages.success(request, f"Welcome to Jira, {user.first_name or user.username}!")
+        messages.success(request, f"Welcome to Kaola, {user.first_name or user.username}!")
         return redirect('board')
 
     return redirect('login')

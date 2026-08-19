@@ -4,7 +4,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sign In - {{ team_name }} Jira</title>
+    <title>Sign In - {{ team_name }} Kaola</title>
+    <link rel="icon" type="image/svg+xml" href="{% static 'img/kaola-icon.svg' %}">
+    <link rel="icon" type="image/png" href="{% static 'img/kaola-icon.png' %}">
+    <link rel="shortcut icon" href="{% static 'img/kaola-icon.png' %}">
     <link rel="stylesheet" href="{% static 'css/jira-theme.css' %}">
     <style>
         :root {
@@ -244,10 +247,10 @@
         <div class="auth-card">
             <div class="auth-header">
                 <a href="#" class="auth-brand">
-                    <div class="auth-brand-icon">J</div>
-                    <span class="auth-brand-title">Jira</span>
+                    <img src="{% static 'img/kaola-icon.svg' %}" alt="Kaola" class="auth-brand-icon" style="width:34px; height:34px; border-radius:8px; object-fit:cover;">
+                    <span class="auth-brand-title">Kaola</span>
                 </a>
-                <p class="auth-subtitle">{{ team_name }} Ticket System</p>
+                <p class="auth-subtitle">{{ team_name }} Kaola Workspace</p>
             </div>
 
             <!-- VERIFICATION SENT CARD -->
@@ -334,7 +337,7 @@
                     </div>
                 </div>
 
-                <button type="submit" class="btn-submit">Log In to Jira</button>
+                <button type="submit" class="btn-submit">Log In to Kaola</button>
             </form>
 
             <!-- CREATE ACCOUNT FORM -->
@@ -386,7 +389,7 @@
             {% endif %}
 
             <div class="auth-footer">
-                <p>&copy; 2026 {{ team_name }} Jira System. All rights reserved.</p>
+                <p>&copy; 2026 {{ team_name }} Kaola Workspace. All rights reserved.</p>
             </div>
         </div>
     </div>
