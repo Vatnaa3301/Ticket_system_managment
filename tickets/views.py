@@ -555,6 +555,17 @@ def api_create_user(request):
             avatar_color=chosen_color
         )
 
+        # Associate new user with space
+        target_space_id = data.get('space_id')
+        if target_space_id:
+            target_space = TeamSetting.objects.filter(id=target_space_id).first()
+            if target_space:
+                target_space.members.add(user)
+        else:
+            active_sp = get_active_space(request)
+            if active_sp:
+                active_sp.members.add(user)
+
         # Pusher realtime broadcast
         try:
             pusher_client.trigger('team_management', 'user-added', {
@@ -1249,9 +1260,45 @@ def api_summary_metrics(request):
 
 @login_required
 def teams_view(request):
-    """Render Team Vatana member management dashboard."""
-    users_qs = User.objects.filter(is_active=True).select_related('profile', 'profile__role').order_by('-date_joined')
+    """Render Space-aware Team member management dashboard."""
+    all_spaces = list(TeamSetting.objects.select_related('lead', 'lead__profile').prefetch_related('members').all().order_by('id'))
     
+    space_param = request.GET.get('space_id') or request.GET.get('space')
+    selected_space = None
+    selected_space_id = 'all'
+
+    if space_param and str(space_param).lower() == 'all':
+        selected_space = None
+        selected_space_id = 'all'
+        users_qs = list(User.objects.filter(is_active=True).select_related('profile', 'profile__role').prefetch_related('spaces').order_by('-date_joined'))
+    else:
+        if space_param:
+            try:
+                selected_space = TeamSetting.objects.filter(id=int(space_param)).first()
+            except (ValueError, TypeError):
+                selected_space = None
+        
+        if not selected_space:
+            selected_space = get_active_space(request)
+
+        if selected_space:
+            selected_space_id = selected_space.id
+            if hasattr(request, 'session'):
+                request.session['active_space_id'] = selected_space.id
+            
+            # Ensure lead is included in space members if set
+            if selected_space.lead and selected_space.lead.is_active:
+                if not selected_space.members.filter(id=selected_space.lead.id).exists():
+                    selected_space.members.add(selected_space.lead)
+
+            # If space is completely empty, add active user or lead
+            if selected_space.members.count() == 0 and request.user.is_authenticated and request.user.is_active:
+                selected_space.members.add(request.user)
+
+            users_qs = list(selected_space.members.filter(is_active=True).select_related('profile', 'profile__role').prefetch_related('spaces').order_by('-date_joined'))
+        else:
+            users_qs = list(User.objects.filter(is_active=True).select_related('profile', 'profile__role').prefetch_related('spaces').order_by('-date_joined'))
+
     current_profile = getattr(request.user, 'profile', None)
     is_admin = request.user.is_superuser or (current_profile and current_profile.role and current_profile.role.role_name in ['Admin', 'Administrator'])
 
@@ -1262,7 +1309,9 @@ def teams_view(request):
     viewer_count = 0
     agent_count = 0
 
+    current_member_ids = set()
     for u in users_qs:
+        current_member_ids.add(u.id)
         profile = getattr(u, 'profile', None)
         role_obj = profile.role if profile else None
         raw_role = role_obj.role_name if role_obj else ('Administrator' if u.is_superuser else 'Member')
@@ -1287,6 +1336,8 @@ def teams_view(request):
         raw_dept = (profile.department if profile and profile.department else (profile.job_title if profile and profile.job_title else 'Software Team'))
         clean_dept = 'Software Team' if ('enginor' in str(raw_dept).lower()) else (raw_dept or 'Software Team')
 
+        u_spaces = [{'id': s.id, 'name': s.name, 'key': s.ticket_prefix} for s in u.spaces.all()]
+
         members_data.append({
             'id': u.id,
             'username': u.username,
@@ -1299,8 +1350,29 @@ def teams_view(request):
             'department': clean_dept,
             'status': profile.status if profile else 'Active',
             'date_joined': u.date_joined.strftime('%b %d, %Y'),
-            'is_self': (u.id == request.user.id)
+            'is_self': (u.id == request.user.id),
+            'spaces': u_spaces,
+            'is_lead': bool(selected_space and selected_space.lead_id == u.id),
         })
+
+    # Available registered users who are not currently members of the selected space
+    all_active_users = list(User.objects.filter(is_active=True).select_related('profile').order_by('username'))
+    available_users = []
+    for u in all_active_users:
+        if u.id not in current_member_ids:
+            uprof = getattr(u, 'profile', None)
+            dfull = uprof.full_name.strip() if uprof and uprof.full_name else u.username
+            uparts = dfull.split()
+            uinit = (uparts[0][0] + uparts[-1][0]).upper() if len(uparts) >= 2 else dfull[:2].upper()
+            available_users.append({
+                'id': u.id,
+                'username': u.username,
+                'name': dfull,
+                'initials': uinit,
+                'email': u.email or '',
+                'avatar_color': uprof.avatar_color if uprof and uprof.avatar_color else '#0052cc',
+                'profile_image': uprof.profile_image if uprof and uprof.profile_image else '',
+            })
 
     context = {
         'active_view': 'teams',
@@ -1311,6 +1383,10 @@ def teams_view(request):
         'member_count': member_count,
         'viewer_count': viewer_count,
         'agent_count': agent_count,
+        'selected_space': selected_space,
+        'selected_space_id': selected_space_id,
+        'all_spaces': all_spaces,
+        'available_users': available_users,
     }
     return render(request, 'tickets/teams.html', context)
 
@@ -2150,7 +2226,7 @@ def api_update_user_role(request, user_id):
 @login_required
 @require_POST
 def api_remove_user(request, user_id):
-    """Admin-only API endpoint to remove a user from Team Vatana."""
+    """Admin-only API endpoint to remove a user from a Space or deactivate account."""
     current_profile = getattr(request.user, 'profile', None)
     is_admin = request.user.is_superuser or (current_profile and current_profile.role and current_profile.role.role_name in ['Admin', 'Administrator'])
 
@@ -2162,6 +2238,34 @@ def api_remove_user(request, user_id):
 
     target_user = get_object_or_404(User, id=user_id)
     try:
+        try:
+            data = json.loads(request.body) if (request.body and request.content_type and 'application/json' in request.content_type) else {}
+        except Exception:
+            data = {}
+        
+        space_id = data.get('space_id') or request.GET.get('space_id') or request.POST.get('space_id')
+        if space_id and str(space_id).lower() != 'all':
+            try:
+                target_space = TeamSetting.objects.filter(id=int(space_id)).first()
+                if target_space:
+                    target_space.members.remove(target_user)
+                    try:
+                        pusher_client.trigger('team_management', 'user-removed', {
+                            'user_id': target_user.id,
+                            'space_id': target_space.id
+                        })
+                    except Exception:
+                        pass
+                    return JsonResponse({
+                        'success': True,
+                        'user_id': user_id,
+                        'username': target_user.username,
+                        'message': f'{target_user.username} removed from {target_space.name}.'
+                    })
+            except (ValueError, TypeError):
+                pass
+
+        # Global removal / deactivation if no specific space is provided
         target_user.is_active = False
         target_user.save()
 
@@ -2665,11 +2769,14 @@ def api_mark_all_notifications_read(request):
 
 def get_procurement_report_data(request):
     """
-    Compute tickets and statistics for the Procurement Report with multi-window date, status, and user filtering.
+    Compute tickets and statistics for the Procurement Report with multi-window date, space, status, and user filtering.
     Optimized with select_related for sub-10ms query execution.
     """
     now = timezone.now()
     today = timezone.localdate()
+
+    space_id = request.GET.get('space_id') or request.GET.get('space', '')
+    space_id = space_id.strip() if space_id else ''
 
     time_range = request.GET.get('time_range', '1m').lower()  # '1w', '1m', '6m', 'all'
     status_filter = request.GET.get('status_filter', 'all').lower()  # 'all', 'done', 'created', 'not_finished'
@@ -2681,9 +2788,16 @@ def get_procurement_report_data(request):
     q = request.GET.get('q', '').strip()
 
     qs = Ticket.objects.select_related(
-        'status', 'priority', 'category', 'user', 'user__profile',
+        'space', 'status', 'priority', 'category', 'user', 'user__profile',
         'assigned_to', 'assigned_to__profile'
     ).all().order_by('-created_at')
+
+    # 0. Space filter
+    if space_id and space_id.lower() != 'all':
+        try:
+            qs = qs.filter(space_id=int(space_id))
+        except (ValueError, TypeError):
+            pass
 
     # 1. Date filter (1 week, 1 month, 6 months, all)
     if time_range in ['1w', '1week', '7d', '7days']:
@@ -2757,6 +2871,19 @@ def get_procurement_report_data(request):
         if prio_name.lower() in ['critical', 'high']:
             critical_count += 1
 
+        # Space info
+        space_data = None
+        if t.space:
+            space_data = {
+                'id': t.space.id,
+                'name': t.space.name,
+                'key': t.space.ticket_prefix,
+                'icon_type': t.space.icon_type,
+                'icon_value': t.space.icon_value,
+                'icon_bg_color': t.space.icon_bg_color,
+                'initials': t.space.initials,
+            }
+
         # Assignee
         assignee_data = None
         if t.assigned_to:
@@ -2808,6 +2935,12 @@ def get_procurement_report_data(request):
             'status_id': t.status.status_id if t.status else None,
             'status_name': st_name,
             'status_badge_type': st_badge_type,
+            'space': space_data,
+            'space_id': t.space.id if t.space else None,
+            'space_name': t.space.name if t.space else 'General',
+            'space_key': t.space.ticket_prefix if t.space else 'KAN',
+            'space_initials': t.space.initials if t.space else 'TV',
+            'space_icon_bg_color': t.space.icon_bg_color if t.space else '#0052cc',
             'assignee': assignee_data,
             'creator': creator_data,
             'created_at_formatted': created_str,
@@ -2832,6 +2965,8 @@ def get_procurement_report_data(request):
             'completion_rate': completion_rate,
         },
         'filters': {
+            'space': space_id,
+            'space_id': space_id,
             'time_range': time_range,
             'status_filter': status_filter,
             'user': user_id,
@@ -2848,7 +2983,7 @@ def get_procurement_report_data(request):
 def procurement_report_view(request):
     """
     Render Procurement Report page exclusively for Admin accounts.
-    Displays metrics cards, interactive filters (1w, 1m, 6m, all / status / user),
+    Displays metrics cards, interactive filters (space / 1w, 1m, 6m, all / status / user),
     ticket list table, and Excel/PDF export capabilities.
     """
     profile = getattr(request.user, 'profile', None)
@@ -2859,6 +2994,9 @@ def procurement_report_view(request):
         return redirect('board')
 
     report_data = get_procurement_report_data(request)
+
+    # Fetch all spaces for space filter dropdown
+    all_spaces = list(TeamSetting.objects.select_related('lead', 'lead__profile').all().order_by('id'))
 
     # Fetch lookup data for filters
     all_users = User.objects.select_related('profile').all().order_by('username')
@@ -2886,6 +3024,8 @@ def procurement_report_view(request):
         'tickets': report_data['tickets'],
         'metrics': report_data['metrics'],
         'filters': report_data['filters'],
+        'all_spaces': all_spaces,
+        'selected_space_id': report_data['filters'].get('space') or '',
         'user_options': user_options,
         'categories': categories,
         'priorities': priorities,

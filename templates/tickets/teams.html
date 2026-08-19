@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load team_tags %}
 
-{% block title %}Teams - {{ team_name }} Jira{% endblock %}
+{% block title %}Teams - {% if selected_space %}{{ selected_space.name }}{% else %}All Spaces{% endif %} Jira{% endblock %}
 
 {% block content %}
 <style>
@@ -16,20 +16,179 @@
     height: 100% !important;
     min-height: 0 !important;
 }
+
+/* SPACE SWITCHER BAR */
+.teams-space-selector-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    border-bottom: 1px solid var(--jira-border);
+    padding-bottom: 14px;
+}
+
+.teams-space-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--jira-text-muted);
+    background: var(--jira-card-bg);
+    border: 1px solid var(--jira-border);
+    text-decoration: none;
+    transition: all 0.15s ease;
+    cursor: pointer;
+}
+
+.teams-space-tab:hover {
+    color: var(--jira-text-dark);
+    background: rgba(9, 30, 66, 0.04);
+    border-color: var(--jira-border-hover);
+}
+
+.teams-space-tab.active {
+    background: rgba(0, 82, 204, 0.08);
+    color: #0052cc;
+    border-color: rgba(0, 82, 204, 0.35);
+    box-shadow: 0 1px 3px rgba(0, 82, 204, 0.08);
+}
+
+[data-theme="dark"] .teams-space-tab.active {
+    background: rgba(87, 157, 255, 0.15);
+    color: #579dff;
+    border-color: rgba(87, 157, 255, 0.4);
+}
+
+.teams-space-tab .tab-badge {
+    font-size: 11px;
+    padding: 1px 6px;
+    border-radius: 10px;
+    background: rgba(9, 30, 66, 0.08);
+    color: inherit;
+}
+
+[data-theme="dark"] .teams-space-tab .tab-badge {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.space-lead-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: rgba(255, 171, 0, 0.15);
+    color: #b76e00;
+    margin-left: 6px;
+}
+
+[data-theme="dark"] .space-lead-badge {
+    background: rgba(255, 171, 0, 0.2);
+    color: #f5cd47;
+}
+
+.space-pill-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 4px;
+    background: rgba(9, 30, 66, 0.06);
+    color: var(--jira-text-dark);
+    margin-right: 4px;
+    margin-bottom: 2px;
+}
+
+[data-theme="dark"] .space-pill-tag {
+    background: #22272b;
+}
+
+/* MODAL STYLES */
+.add-member-modal-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--jira-border);
+    margin-bottom: 18px;
+}
+
+.add-member-modal-tab {
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--jira-text-muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+}
+
+.add-member-modal-tab.active {
+    color: #0052cc;
+    border-bottom-color: #0052cc;
+}
+
+[data-theme="dark"] .add-member-modal-tab.active {
+    color: #579dff;
+    border-bottom-color: #579dff;
+}
 </style>
+
 <div class="teams-page-container">
     <!-- PAGE HEADER -->
     <div class="teams-page-header">
         <div>
-            <h1 class="teams-heading"><span class="global-team-name-text">{{ team_name }}</span> Members</h1>
-            <p class="teams-subheading">Manage team members, roles, and permissions across <span class="global-team-name-text">{{ team_name }}</span>.</p>
+            <h1 class="teams-heading">
+                {% if selected_space %}
+                    <span>{{ selected_space.name }}</span> Members
+                {% else %}
+                    <span>All Spaces</span> Members Directory
+                {% endif %}
+            </h1>
+            <p class="teams-subheading">
+                {% if selected_space %}
+                    Manage team members, roles, and permissions in <strong>{{ selected_space.name }}</strong> (Key: {{ selected_space.ticket_prefix }}).
+                    {% if selected_space.lead %}
+                        <span style="margin-left: 8px; color: var(--jira-text-muted);">Space Lead: <strong>{{ selected_space.lead.profile.full_name|default:selected_space.lead.username }}</strong></span>
+                    {% endif %}
+                {% else %}
+                    View and manage all members and their space memberships across the workspace.
+                {% endif %}
+            </p>
         </div>
         {% if is_admin %}
-        <button type="button" class="btn-primary" onclick="openAddUserModal()" style="height:38px; padding:0 18px; display:inline-flex; align-items:center; gap:8px; background:#0052cc; font-weight:600; border-radius:4px;">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            <span>Add people</span>
-        </button>
+        <div style="display: flex; gap: 8px; align-items: center;">
+            <button type="button" class="btn-primary" onclick="openTeamAddModal()" style="height:38px; padding:0 18px; display:inline-flex; align-items:center; gap:8px; background:#0052cc; font-weight:600; border-radius:4px; cursor:pointer;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                <span>Add people</span>
+            </button>
+        </div>
         {% endif %}
+    </div>
+
+    <!-- SPACE SELECTOR TABS -->
+    <div class="teams-space-selector-bar">
+        <span style="font-size:12px; font-weight:700; color:var(--jira-text-muted); text-transform:uppercase; margin-right:4px;">Filter Space:</span>
+        
+        {% for sp in all_spaces %}
+        <a href="{% url 'teams' %}?space_id={{ sp.id }}" class="teams-space-tab {% if selected_space and selected_space.id == sp.id %}active{% endif %}">
+            <div style="width:18px; height:18px; border-radius:3px; overflow:hidden; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:9px; font-weight:800;">
+                {% render_team_avatar sp.icon_type sp.icon_value sp.initials sp.icon_bg_color %}
+            </div>
+            <span>{{ sp.name }}</span>
+            <span class="tab-badge">{{ sp.members.count }}</span>
+        </a>
+        {% endfor %}
+
+        <a href="{% url 'teams' %}?space_id=all" class="teams-space-tab {% if selected_space_id == 'all' %}active{% endif %}">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
+            <span>All Spaces</span>
+            <span class="tab-badge">{{ total_count }}</span>
+        </a>
     </div>
 
     <!-- METRICS CARDS -->
@@ -71,11 +230,15 @@
         <table class="teams-table" id="teamsMembersTable">
             <thead>
                 <tr>
-                    <th style="width:30%;">Member</th>
-                    <th style="width:25%;">Role</th>
+                    <th style="width:28%;">Member</th>
+                    <th style="width:22%;">Role</th>
+                    {% if selected_space_id == 'all' %}
+                    <th style="width:20%;">Assigned Spaces</th>
+                    {% else %}
                     <th style="width:20%;">Department</th>
+                    {% endif %}
                     <th style="width:15%;">Status</th>
-                    <th style="width:10%; text-align:right;">Actions</th>
+                    <th style="width:15%; text-align:right;">Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -91,10 +254,13 @@
                                 {% endif %}
                             </div>
                             <div>
-                                <div style="font-size:14px; font-weight:600; color:var(--jira-text-dark);">
-                                    {{ m.display_name }}
+                                <div style="font-size:14px; font-weight:600; color:var(--jira-text-dark); display:flex; align-items:center; flex-wrap:wrap; gap:4px;">
+                                    <span>{{ m.display_name }}</span>
                                     {% if m.is_self %}
-                                    <span style="font-size:11px; font-weight:700; color:var(--jira-blue); background:rgba(87,157,255,0.12); padding:1px 6px; border-radius:4px; margin-left:4px;">YOU</span>
+                                    <span style="font-size:11px; font-weight:700; color:var(--jira-blue); background:rgba(87,157,255,0.12); padding:1px 6px; border-radius:4px;">YOU</span>
+                                    {% endif %}
+                                    {% if m.is_lead %}
+                                    <span class="space-lead-badge" title="Space Lead">👑 Lead</span>
                                     {% endif %}
                                 </div>
                                 <div style="font-size:12px; color:var(--jira-text-muted);">{{ m.email|default:m.username }}</div>
@@ -113,7 +279,7 @@
                                 <option value="Viewer" {% if m.role == 'Viewer' or m.role == 'Guest' %}selected{% endif %}>Viewer</option>
                             </select>
 
-                            <button type="button" class="btn-save-role" id="btn-save-role-{{ m.id }}" onclick="saveMemberRole({{ m.id }})" style="display:none;">
+                            <button type="button" class="btn-save-role" id="btn-save-role-{{ m.id }}" onclick="saveMemberRole({{ m.id }})" style="display:none; padding:4px 10px; font-size:12px; font-weight:600; border-radius:4px; background:#0052cc; color:#fff; border:none; cursor:pointer;">
                                 Save
                             </button>
 
@@ -129,7 +295,21 @@
                         {% endif %}
                     </td>
 
+                    {% if selected_space_id == 'all' %}
+                    <td>
+                        <div style="display:flex; flex-wrap:wrap; gap:4px;">
+                            {% for sp in m.spaces %}
+                            <span class="space-pill-tag">
+                                <strong>{{ sp.key }}</strong> {{ sp.name }}
+                            </span>
+                            {% empty %}
+                            <span style="font-size:12px; color:var(--jira-text-muted); font-style:italic;">No spaces</span>
+                            {% endfor %}
+                        </div>
+                    </td>
+                    {% else %}
                     <td style="font-size:13px; color:var(--jira-text-dark);">{{ m.department }}</td>
+                    {% endif %}
 
                     <td>
                         <span class="status-badge-active">
@@ -139,7 +319,7 @@
 
                     <td style="text-align:right;">
                         {% if is_admin and not m.is_self %}
-                        <button type="button" class="btn-remove-member" onclick="removeMember({{ m.id }}, '{{ m.display_name|escapejs }}')" title="Remove member from team" style="background:none; border:none; color:#ff5630; cursor:pointer; padding:6px; border-radius:4px;">
+                        <button type="button" class="btn-remove-member" onclick="removeMember({{ m.id }}, '{{ m.display_name|escapejs }}', '{% if selected_space %}{{ selected_space.id }}{% else %}all{% endif %}', '{% if selected_space %}{{ selected_space.name|escapejs }}{% else %}workspace{% endif %}')" title="{% if selected_space %}Remove from {{ selected_space.name }}{% else %}Deactivate user{% endif %}" style="background:none; border:none; color:#ff5630; cursor:pointer; padding:6px; border-radius:4px;">
                             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
                         </button>
                         {% else %}
@@ -147,9 +327,102 @@
                         {% endif %}
                     </td>
                 </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" style="text-align:center; padding:36px; color:var(--jira-text-muted);">
+                        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:8px;"><circle cx="12" cy="12" r="10"/><path d="M16 16s-1.5-2-4-2-4 2-4 2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+                        <div style="font-size:14px; font-weight:600; color:var(--jira-text-dark);">No members in this space yet</div>
+                        <p style="font-size:12px; margin-top:4px;">Use "Add people" above to assign team members to this space.</p>
+                    </td>
+                </tr>
                 {% endfor %}
             </tbody>
         </table>
+    </div>
+</div>
+
+<!-- ADD PEOPLE MODAL -->
+<div class="modal-overlay" id="teamAddPersonModal" style="display:none; position:fixed; inset:0; background:rgba(9,30,66,0.54); z-index:9999; align-items:center; justify-content:center; backdrop-filter:blur(2px);">
+    <div class="modal-card" style="width:500px; max-width:92vw; background:var(--jira-card-bg); border-radius:8px; box-shadow:0 12px 32px rgba(0,0,0,0.25); border:1px solid var(--jira-border); overflow:hidden;">
+        <div style="padding:18px 24px; border-bottom:1px solid var(--jira-border); display:flex; align-items:center; justify-content:space-between;">
+            <h3 style="margin:0; font-size:18px; font-weight:700; color:var(--jira-text-dark);">
+                Add people to {% if selected_space %}{{ selected_space.name }}{% else %}team{% endif %}
+            </h3>
+            <button type="button" onclick="closeTeamAddModal()" style="background:none; border:none; font-size:22px; cursor:pointer; color:var(--jira-text-muted); line-height:1;">&times;</button>
+        </div>
+
+        <div style="padding:20px 24px;">
+            {% if selected_space and available_users %}
+            <!-- TABS FOR EXISTING USER VS CREATE NEW USER -->
+            <div class="add-member-modal-tabs">
+                <div class="add-member-modal-tab active" id="tabAddExisting" onclick="switchAddTab('existing')">Choose Existing User</div>
+                <div class="add-member-modal-tab" id="tabCreateNew" onclick="switchAddTab('new')">Create New User</div>
+            </div>
+            {% endif %}
+
+            <!-- SECTION 1: ADD EXISTING USERS TO THIS SPACE -->
+            {% if selected_space and available_users %}
+            <div id="sectionAddExisting">
+                <div class="form-group" style="margin-bottom:16px;">
+                    <label style="font-size:12px; font-weight:700; margin-bottom:6px; display:block; color:var(--jira-text-dark);">Select team members to add:</label>
+                    <select id="selectExistingUsers" multiple style="width:100%; min-height:110px; border:1px solid var(--jira-border); border-radius:4px; padding:6px; background:var(--jira-card-bg); color:var(--jira-text-dark); font-size:13px;">
+                        {% for u in available_users %}
+                        <option value="{{ u.id }}">{{ u.name }} ({{ u.username }} - {{ u.email }})</option>
+                        {% endfor %}
+                    </select>
+                    <div style="font-size:11px; color:var(--jira-text-muted); margin-top:4px;">Hold Ctrl (or Cmd on Mac) to select multiple users.</div>
+                </div>
+
+                <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:20px;">
+                    <button type="button" class="btn-jira-secondary" onclick="closeTeamAddModal()">Cancel</button>
+                    <button type="button" class="btn-jira-primary" id="btnAddExistingBtn" onclick="submitAddExistingMembers({{ selected_space.id }})">Add to Space</button>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- SECTION 2: CREATE BRAND NEW USER -->
+            <div id="sectionCreateNew" {% if selected_space and available_users %}style="display:none;"{% endif %}>
+                <form id="formCreateNewUser" onsubmit="submitCreateNewUser(event)">
+                    <input type="hidden" id="newSpaceIdInput" value="{% if selected_space %}{{ selected_space.id }}{% endif %}">
+                    
+                    <div class="form-group" style="margin-bottom:14px;">
+                        <label style="font-size:12px; font-weight:700; margin-bottom:4px; display:block;">Full Name <span style="color:#ff5630;">*</span></label>
+                        <input type="text" id="newFullName" class="form-control" required placeholder="e.g. Alex Morgan" style="width:100%; height:36px; padding:0 12px; border:1px solid var(--jira-border); border-radius:4px; background:var(--jira-card-bg); color:var(--jira-text-dark);">
+                    </div>
+
+                    <div class="form-group" style="margin-bottom:14px;">
+                        <label style="font-size:12px; font-weight:700; margin-bottom:4px; display:block;">Email Address <span style="color:#ff5630;">*</span></label>
+                        <input type="email" id="newEmail" class="form-control" required placeholder="e.g. alex@company.com" style="width:100%; height:36px; padding:0 12px; border:1px solid var(--jira-border); border-radius:4px; background:var(--jira-card-bg); color:var(--jira-text-dark);">
+                    </div>
+
+                    <div class="form-group" style="margin-bottom:14px;">
+                        <label style="font-size:12px; font-weight:700; margin-bottom:4px; display:block;">Password <span style="color:#ff5630;">*</span></label>
+                        <input type="password" id="newPassword" class="form-control" required minlength="6" placeholder="At least 6 characters" style="width:100%; height:36px; padding:0 12px; border:1px solid var(--jira-border); border-radius:4px; background:var(--jira-card-bg); color:var(--jira-text-dark);">
+                    </div>
+
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px;">
+                        <div class="form-group">
+                            <label style="font-size:12px; font-weight:700; margin-bottom:4px; display:block;">Role</label>
+                            <select id="newRole" style="width:100%; height:36px; padding:0 10px; border:1px solid var(--jira-border); border-radius:4px; background:var(--jira-card-bg); color:var(--jira-text-dark);">
+                                <option value="Member">Member</option>
+                                <option value="Administrator">Administrator</option>
+                                <option value="Support Agent">Support Agent</option>
+                                <option value="Viewer">Viewer</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label style="font-size:12px; font-weight:700; margin-bottom:4px; display:block;">Department</label>
+                            <input type="text" id="newDepartment" value="Software Team" style="width:100%; height:36px; padding:0 10px; border:1px solid var(--jira-border); border-radius:4px; background:var(--jira-card-bg); color:var(--jira-text-dark);">
+                        </div>
+                    </div>
+
+                    <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:20px;">
+                        <button type="button" class="btn-jira-secondary" onclick="closeTeamAddModal()">Cancel</button>
+                        <button type="submit" class="btn-jira-primary" id="btnCreateUserSubmit">Create & Add</button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -227,14 +500,16 @@
         }
     };
 
-    // Real-Time Remove Member function for Admin
-    window.removeMember = async function(userId, name) {
-        const currentTeamName = (window.CURRENT_TEAM && window.CURRENT_TEAM.name) ? window.CURRENT_TEAM.name : 'the team';
-        if (!confirm(`Are you sure you want to remove ${name} from ${currentTeamName}?`)) return;
+    // Real-Time Remove Member function with Space awareness
+    window.removeMember = async function(userId, name, spaceId, spaceName) {
+        const promptTarget = (spaceId && spaceId !== 'all') ? `from space "${spaceName}"` : 'from the workspace';
+        if (!confirm(`Are you sure you want to remove ${name} ${promptTarget}?`)) return;
+        
         try {
             const res = await fetch(`/api/users/${userId}/remove/`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ space_id: spaceId })
             });
             const data = await res.json();
             if (data.success) {
@@ -243,6 +518,11 @@
                     row.style.transition = 'all 0.2s ease';
                     row.style.opacity = '0';
                     setTimeout(() => row.remove(), 200);
+                }
+                const countEl = document.getElementById('statTotalCount');
+                if (countEl) {
+                    const currentCount = parseInt(countEl.textContent || '0');
+                    if (currentCount > 0) countEl.textContent = currentCount - 1;
                 }
             } else {
                 alert('Failed to remove member: ' + (data.error || 'Permission denied'));
@@ -253,7 +533,116 @@
         }
     };
 
-    // Subscribe to Pusher team management events for real-time updates across browsers
+    // Modal helpers
+    window.openTeamAddModal = function() {
+        const modal = document.getElementById('teamAddPersonModal');
+        if (modal) modal.style.display = 'flex';
+    };
+
+    window.closeTeamAddModal = function() {
+        const modal = document.getElementById('teamAddPersonModal');
+        if (modal) modal.style.display = 'none';
+    };
+
+    window.switchAddTab = function(tab) {
+        const tabExisting = document.getElementById('tabAddExisting');
+        const tabNew = document.getElementById('tabCreateNew');
+        const secExisting = document.getElementById('sectionAddExisting');
+        const secNew = document.getElementById('sectionCreateNew');
+
+        if (tab === 'existing') {
+            if (tabExisting) tabExisting.classList.add('active');
+            if (tabNew) tabNew.classList.remove('active');
+            if (secExisting) secExisting.style.display = 'block';
+            if (secNew) secNew.style.display = 'none';
+        } else {
+            if (tabExisting) tabExisting.classList.remove('active');
+            if (tabNew) tabNew.classList.add('active');
+            if (secExisting) secExisting.style.display = 'none';
+            if (secNew) secNew.style.display = 'block';
+        }
+    };
+
+    window.submitAddExistingMembers = async function(spaceId) {
+        const select = document.getElementById('selectExistingUsers');
+        if (!select) return;
+        const selectedValues = Array.from(select.selectedOptions).map(o => parseInt(o.value));
+        if (selectedValues.length === 0) {
+            alert('Please select at least one user to add.');
+            return;
+        }
+
+        const btn = document.getElementById('btnAddExistingBtn');
+        if (btn) { btn.disabled = true; btn.textContent = 'Adding...'; }
+
+        try {
+            const res = await fetch(`/api/spaces/${spaceId}/members/add/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_ids: selectedValues })
+            });
+            const data = await res.json();
+            if (data.success) {
+                window.location.reload();
+            } else {
+                alert('Error adding members: ' + (data.error || 'Failed'));
+                if (btn) { btn.disabled = false; btn.textContent = 'Add to Space'; }
+            }
+        } catch (err) {
+            console.error('Error adding members:', err);
+            alert('Error adding members: ' + err.message);
+            if (btn) { btn.disabled = false; btn.textContent = 'Add to Space'; }
+        }
+    };
+
+    window.submitCreateNewUser = async function(e) {
+        e.preventDefault();
+        const fullName = document.getElementById('newFullName').value.trim();
+        const email = document.getElementById('newEmail').value.trim();
+        const password = document.getElementById('newPassword').value.trim();
+        const role = document.getElementById('newRole').value;
+        const department = document.getElementById('newDepartment').value.trim();
+        const spaceId = document.getElementById('newSpaceIdInput').value;
+
+        const btn = document.getElementById('btnCreateUserSubmit');
+        if (btn) { btn.disabled = true; btn.textContent = 'Creating...'; }
+
+        try {
+            const res = await fetch('/api/users/create/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    full_name: fullName,
+                    email: email,
+                    password: password,
+                    role_name: role,
+                    department: department,
+                    space_id: spaceId || undefined
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                window.location.reload();
+            } else {
+                alert('Error creating user: ' + (data.error || 'Failed'));
+                if (btn) { btn.disabled = false; btn.textContent = 'Create & Add'; }
+            }
+        } catch (err) {
+            console.error('Error creating user:', err);
+            alert('Error: ' + err.message);
+            if (btn) { btn.disabled = false; btn.textContent = 'Create & Add'; }
+        }
+    };
+
+    // Close modal on click outside
+    document.addEventListener('click', (e) => {
+        const modal = document.getElementById('teamAddPersonModal');
+        if (modal && e.target === modal) {
+            closeTeamAddModal();
+        }
+    });
+
+    // Subscribe to Pusher team management events
     if (typeof Pusher !== 'undefined') {
         const pusher = new Pusher('308cbea8f43adedfd722', { cluster: 'ap1' });
         const channel = pusher.subscribe('team_management');
@@ -278,7 +667,6 @@
         });
 
         channel.bind('user-added', function(data) {
-            // Auto reload to reflect the new member and counts
             window.location.reload();
         });
     }
