@@ -170,7 +170,24 @@
     border: 1px solid var(--jira-border);
     border-radius: 8px;
     box-shadow: var(--jira-card-shadow);
-    overflow: hidden;
+    overflow: visible;
+}
+
+.space-menu-item {
+    transition: background 0.15s ease;
+    border-radius: 4px;
+}
+
+.space-menu-item:hover {
+    background: rgba(9, 30, 66, 0.06) !important;
+}
+
+[data-theme="dark"] .space-menu-item:hover {
+    background: rgba(255, 255, 255, 0.08) !important;
+}
+
+.space-menu-item.item-danger:hover {
+    background: rgba(222, 53, 11, 0.1) !important;
 }
 
 .spaces-table {
@@ -467,24 +484,51 @@ function toggleSpaceRowMenu(spaceId, event) {
     if (event) {
         event.stopPropagation();
     }
+    const btn = (event && event.currentTarget) ? event.currentTarget : document.querySelector(`.space-menu-trigger-btn[onclick*="${spaceId}"]`);
     const dropdown = document.getElementById(`spaceRowDropdown-${spaceId}`);
     const isCurrentlyOpen = dropdown && dropdown.style.display === 'block';
+    
     closeAllSpaceRowMenus();
-    if (dropdown && !isCurrentlyOpen) {
+    
+    if (dropdown && !isCurrentlyOpen && btn) {
         dropdown.style.display = 'block';
+        dropdown.style.position = 'fixed';
+        dropdown.style.zIndex = '999999';
+        dropdown.style.visibility = 'hidden';
+        
+        const rect = btn.getBoundingClientRect();
+        const menuWidth = dropdown.offsetWidth || 190;
+        const menuHeight = dropdown.offsetHeight || 140;
+        
+        let left = rect.right - menuWidth;
+        if (left < 8) left = 8;
+        if (left + menuWidth > window.innerWidth - 8) left = window.innerWidth - menuWidth - 8;
+        
+        let top = rect.bottom + 4;
+        if (top + menuHeight > window.innerHeight - 12) {
+            top = rect.top - menuHeight - 4;
+        }
+        
+        dropdown.style.top = top + 'px';
+        dropdown.style.left = left + 'px';
+        dropdown.style.visibility = 'visible';
     }
 }
 
 function closeAllSpaceRowMenus() {
     document.querySelectorAll('.space-row-dropdown').forEach(d => {
         d.style.display = 'none';
+        d.style.visibility = '';
     });
 }
 
 document.addEventListener('click', (e) => {
-    if (!e.target.closest('.space-row-menu-wrapper')) {
+    if (!e.target.closest('.space-row-menu-wrapper') && !e.target.closest('.space-row-dropdown')) {
         closeAllSpaceRowMenus();
     }
 });
+
+window.addEventListener('scroll', closeAllSpaceRowMenus, true);
+window.addEventListener('resize', closeAllSpaceRowMenus);
 </script>
 {% endblock %}
