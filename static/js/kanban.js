@@ -272,8 +272,10 @@ function attachBoardCardEvents() {
     });
 }
 
-async function fetchBoardData(pushUrl = true) {
-    showBoardSkeleton();
+async function fetchBoardData(pushUrl = true, showSkeleton = true) {
+    if (showSkeleton) {
+        showBoardSkeleton();
+    }
 
     const qInput = document.getElementById('boardSearchInput');
     const catSelect = document.getElementById('boardCatFilter');
@@ -1367,25 +1369,35 @@ document.addEventListener('DOMContentLoaded', () => {
                 // If another user moved a ticket or updated board
                 if (data.updated && data.ver !== currentBoardVersion) {
                     currentBoardVersion = data.ver;
-
-                    const qInput = document.getElementById('boardSearchInput');
-                    const catSelect = document.getElementById('boardCatFilter');
-                    const prioSelect = document.getElementById('boardPrioFilter');
-                    const assigneeSelect = document.getElementById('boardAssigneeFilter');
-                    const hasFilters = (qInput && qInput.value.trim()) || 
-                                       (catSelect && catSelect.value) || 
-                                       (prioSelect && prioSelect.value) || 
-                                       (assigneeSelect && assigneeSelect.value);
-
-                    if (hasFilters && window.fetchBoardData) {
-                        window.fetchBoardData(false);
-                    } else {
-                        applyLiveBoardUpdates(data.tickets, data.column_counts);
-                    }
+                    applyLiveBoardUpdates(data.tickets, data.column_counts);
                 }
             } catch (err) {
                 // Quietly handle intermittent network issues
             }
+        }
+
+        function ticketMatchesCurrentFilters(t) {
+            const qInput = document.getElementById('boardSearchInput');
+            const catSelect = document.getElementById('boardCatFilter');
+            const prioSelect = document.getElementById('boardPrioFilter');
+            const assigneeSelect = document.getElementById('boardAssigneeFilter');
+
+            if (qInput && qInput.value.trim()) {
+                const query = qInput.value.trim().toLowerCase();
+                const sub = (t.subject || '').toLowerCase();
+                const code = (t.ticket_code || '').toLowerCase();
+                if (!sub.includes(query) && !code.includes(query)) return false;
+            }
+            if (catSelect && catSelect.value) {
+                if (String(t.category_id || '') !== String(catSelect.value)) return false;
+            }
+            if (prioSelect && prioSelect.value) {
+                if (String(t.priority_id || '') !== String(prioSelect.value)) return false;
+            }
+            if (assigneeSelect && assigneeSelect.value) {
+                if (String(t.assignee_id || '') !== String(assigneeSelect.value)) return false;
+            }
+            return true;
         }
 
         function createCardElement(t) {
@@ -1454,21 +1466,19 @@ document.addEventListener('DOMContentLoaded', () => {
         function applyLiveBoardUpdates(tickets, columnCounts) {
             if (!tickets) return;
 
-            const validTicketIds = new Set(tickets.map(t => String(t.ticket_id)));
+            const matchingTickets = tickets.filter(ticketMatchesCurrentFilters);
+            const validTicketIds = new Set(matchingTickets.map(t => String(t.ticket_id)));
 
-            // 1. Remove deleted tickets from DOM if no longer in ticket list
+            // 1. Remove deleted or non-matching tickets from DOM
             document.querySelectorAll('.ticket-card[data-ticket-id]').forEach(card => {
                 const tid = card.getAttribute('data-ticket-id');
                 if (tid && !validTicketIds.has(String(tid))) {
-                    card.style.transition = 'all 0.3s ease';
-                    card.style.opacity = '0';
-                    card.style.transform = 'scale(0.8)';
-                    setTimeout(() => { card.remove(); }, 300);
+                    card.remove();
                 }
             });
 
-            // 2. Update column positions, priorities, or render newly created tickets
-            tickets.forEach(t => {
+            // 2. Update column positions, priorities, or render newly matching tickets
+            matchingTickets.forEach(t => {
                 let card = document.querySelector(`.ticket-card[data-ticket-id="${t.ticket_id}"]`);
                 if (card && t.ticket_code) {
                     const codeSpan = card.querySelector('.key-tag span');
@@ -1485,40 +1495,31 @@ document.addEventListener('DOMContentLoaded', () => {
                     const targetColumnContainer = document.querySelector(`.column-cards-container[data-status-id="${t.status_id}"]`);
                     if (targetColumnContainer) {
                         if (!card) {
-                            // NEW TICKET CREATED ON ANOTHER DEVICE! Build and append new card to column
                             card = createCardElement(t);
                             targetColumnContainer.appendChild(card);
                             card.style.animation = 'fadeInCard 0.25s ease-out';
                             if (window.updateCardStatusIcon) window.updateCardStatusIcon(card);
                         } else if (card.parentElement !== targetColumnContainer) {
-                            // TICKET MOVED TO DIFFERENT COLUMN!
-                            card.style.transition = 'transform 0.25s ease, opacity 0.25s ease';
-                            card.style.opacity = '0.3';
-                            card.style.transform = 'scale(0.95)';
-
-                            setTimeout(() => {
-                                targetColumnContainer.appendChild(card);
-                                card.style.opacity = '1';
-                                card.style.transform = 'scale(1)';
-                                setTimeout(() => { card.style.transition = ''; }, 300);
-                            }, 180);
+                            targetColumnContainer.appendChild(card);
+                            if (window.updateCardStatusIcon) window.updateCardStatusIcon(card);
                         }
                     }
                 }
             });
 
-            // 3. Update column card counts
-            if (columnCounts) {
-                Object.keys(columnCounts).forEach(statusId => {
-                    const colContainer = document.querySelector(`.column-cards-container[data-status-id="${statusId}"]`);
-                    if (colContainer) {
-                        const col = colContainer.closest('.kanban-column');
-                        if (col) {
-                            const countBadge = col.querySelector('.column-count');
-                            if (countBadge) countBadge.textContent = columnCounts[statusId];
-                        }
+            // 3. Update column counts based on actual visible matching cards
+            document.querySelectorAll('.column-cards-container').forEach(colContainer => {
+                const col = colContainer.closest('.kanban-column');
+                if (col) {
+                    const countBadge = col.querySelector('.column-count');
+                    if (countBadge) {
+                        countBadge.textContent = colContainer.querySelectorAll('.ticket-card').length;
                     }
-                });
+                }
+            });
+
+            if (typeof attachBoardCardEvents === 'function') {
+                attachBoardCardEvents();
             }
         }
 

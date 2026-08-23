@@ -1440,11 +1440,11 @@ def api_board_sync(request):
     Computes board version dynamically from SQL database state so all Vercel serverless containers stay 100% in sync.
     """
     try:
+        active_space = get_active_space(request)
         client_ver = str(request.GET.get('ver', '0')).strip()
 
         from django.db.models import Max
-        # Fix 3: Single aggregate query instead of 3 separate queries
-        ver_data = Ticket.objects.aggregate(
+        ver_data = Ticket.objects.filter(space=active_space).aggregate(
             ticket_count=Count('ticket_id'),
             max_id=Max('ticket_id'),
             latest_update=Max('updated_at')
@@ -1453,16 +1453,15 @@ def api_board_sync(request):
         max_id = ver_data['max_id'] or 0
         latest_update = ver_data['latest_update']
         if latest_update:
-            current_ver = f"{ticket_count}_{max_id}_{int(latest_update.timestamp() * 1000)}"
+            current_ver = f"{active_space.id}_{ticket_count}_{max_id}_{int(latest_update.timestamp() * 1000)}"
         else:
-            current_ver = f"{ticket_count}_{max_id}_0"
+            current_ver = f"{active_space.id}_{ticket_count}_{max_id}_0"
 
         if client_ver == current_ver:
             return JsonResponse({'updated': False, 'ver': current_ver})
 
-        tickets = list(Ticket.objects.select_related('status', 'priority', 'assigned_to', 'assigned_to__profile').all())
+        tickets = list(Ticket.objects.filter(space=active_space).select_related('status', 'priority', 'category', 'assigned_to', 'assigned_to__profile').all())
         tickets_data = []
-        # Fix 2: Compute column counts in-memory from the same query instead of N+1
         counts = {}
         for t in tickets:
             prof = getattr(t.assigned_to, 'profile', None) if t.assigned_to else None
@@ -1476,6 +1475,8 @@ def api_board_sync(request):
                 'status_name': t.status.status_name if t.status else '',
                 'priority_id': t.priority.priority_id if t.priority else None,
                 'priority_name': t.priority.priority_name if t.priority else '',
+                'category_id': t.category_id if t.category else None,
+                'assignee_id': t.assigned_to_id if t.assigned_to else None,
                 'due_date': safe_format_date(t.due_date, '%Y-%m-%d'),
                 'due_date_formatted': safe_format_date(t.due_date, '%d %b %Y'),
                 'is_due_soon': t.is_due_soon,
