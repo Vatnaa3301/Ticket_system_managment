@@ -1042,6 +1042,33 @@ body {
     margin-top: 4px;
 }
 
+.ticket-card .user-avatar,
+.ticket-card .assignee-avatar-icon {
+    width: 22px !important;
+    height: 22px !important;
+    max-width: 22px !important;
+    max-height: 22px !important;
+    min-width: 22px !important;
+    min-height: 22px !important;
+    border-radius: 50% !important;
+    overflow: hidden !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+}
+
+.ticket-card .user-avatar img,
+.ticket-card .assignee-avatar-icon img {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    object-fit: cover !important;
+    border-radius: 50% !important;
+    display: block !important;
+}
+
 .key-tag {
     display: flex;
     align-items: center;

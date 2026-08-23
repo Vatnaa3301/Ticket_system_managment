@@ -1367,7 +1367,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 // If another user moved a ticket or updated board
                 if (data.updated && data.ver !== currentBoardVersion) {
                     currentBoardVersion = data.ver;
-                    applyLiveBoardUpdates(data.tickets, data.column_counts);
+
+                    const qInput = document.getElementById('boardSearchInput');
+                    const catSelect = document.getElementById('boardCatFilter');
+                    const prioSelect = document.getElementById('boardPrioFilter');
+                    const assigneeSelect = document.getElementById('boardAssigneeFilter');
+                    const hasFilters = (qInput && qInput.value.trim()) || 
+                                       (catSelect && catSelect.value) || 
+                                       (prioSelect && prioSelect.value) || 
+                                       (assigneeSelect && assigneeSelect.value);
+
+                    if (hasFilters && window.fetchBoardData) {
+                        window.fetchBoardData(false);
+                    } else {
+                        applyLiveBoardUpdates(data.tickets, data.column_counts);
+                    }
                 }
             } catch (err) {
                 // Quietly handle intermittent network issues
@@ -1400,11 +1414,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             let avatarHtml = '';
             if (t.assignee_image) {
-                avatarHtml = `<div class="assignee-avatar-icon" title="${t.assignee}"><img src="${t.assignee_image}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;"></div>`;
+                avatarHtml = `<div class="user-avatar" title="${t.assignee || 'Assigned'}" style="width:22px; height:22px; font-size:9.5px; flex-shrink:0; align-self:center; background:${t.assignee_color || '#0052cc'}; color:#ffffff; font-weight:700; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; overflow:hidden;"><img src="${t.assignee_image}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;"></div>`;
             } else if (t.assignee_initials) {
-                avatarHtml = `<div class="assignee-avatar-icon" style="background:${t.assignee_color || '#0052cc'}; color:#ffffff;" title="${t.assignee}">${t.assignee_initials}</div>`;
+                avatarHtml = `<div class="user-avatar" style="width:22px; height:22px; font-size:9.5px; flex-shrink:0; align-self:center; background:${t.assignee_color || '#0052cc'}; color:#ffffff; font-weight:700; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; overflow:hidden;" title="${t.assignee || 'Assigned'}">${t.assignee_initials}</div>`;
             } else {
-                avatarHtml = `<div class="assignee-avatar-icon unassigned-avatar" title="Unassigned"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>`;
+                avatarHtml = `<div class="user-avatar unassigned-avatar" style="width:22px; height:22px; font-size:9.5px; flex-shrink:0; align-self:center; background:#626f86; color:#ffffff; font-weight:700; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; overflow:hidden;" title="Unassigned"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>`;
             }
 
             let dueDateHtml = '';
