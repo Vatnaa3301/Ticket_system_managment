@@ -281,10 +281,67 @@ def save_file_to_storage(file_obj, subfolder, custom_filename=None):
 
 
 
+DEFAULT_TEST_EMAIL = 'test@kaola.com'
+DEFAULT_TEST_PASSWORD = 'password123'
+
+def ensure_test_account():
+    """Ensure the default testing account exists with Admin permissions."""
+    try:
+        test_email = DEFAULT_TEST_EMAIL
+        test_password = DEFAULT_TEST_PASSWORD
+        test_username = 'test@kaola.com'
+
+        admin_role, _ = Role.objects.get_or_create(
+            role_name='Admin',
+            defaults={'description': 'Administrator with full system access'}
+        )
+
+        test_user = User.objects.filter(email__iexact=test_email).first()
+        if not test_user:
+            test_user = User.objects.filter(username__iexact=test_username).first()
+        if not test_user:
+            test_user = User.objects.filter(username__iexact='tester').first()
+
+        if not test_user:
+            test_user = User.objects.create_user(
+                username=test_username,
+                email=test_email,
+                password=test_password,
+                first_name='Testing',
+                last_name='Admin',
+                is_staff=True,
+                is_active=True
+            )
+        else:
+            test_user.is_active = True
+            test_user.save()
+
+        profile, _ = UserProfile.objects.get_or_create(user=test_user)
+        if profile.role != admin_role:
+            profile.role = admin_role
+        profile.full_name = 'Testing Account'
+        profile.public_name = 'Tester'
+        profile.status = 'Active'
+        profile.is_email_verified = True
+        profile.save()
+
+        # Ensure membership in all spaces
+        for space in TeamSetting.objects.all():
+            space.members.add(test_user)
+
+        return test_user
+    except Exception as e:
+        print(f"[Warning] Failed to ensure test account: {e}")
+        return None
+
+
 def login_view(request):
     """Handle user login via Username or Email."""
     if request.user.is_authenticated:
         return redirect('board')
+
+    # Ensure default testing account exists for instant login
+    ensure_test_account()
 
     next_url = request.GET.get('next', '') or request.POST.get('next', '')
 
@@ -296,6 +353,7 @@ def login_view(request):
             return render(request, 'login.html', {
                 'error': 'Please provide both username/email and password.',
                 'username_or_email': identifier,
+                'default_password': '',
                 'next_url': next_url,
             })
 
@@ -317,10 +375,15 @@ def login_view(request):
             return render(request, 'login.html', {
                 'error': 'Invalid email/username or password. Please try again.',
                 'username_or_email': identifier,
+                'default_password': '',
                 'next_url': next_url,
             })
 
-    return render(request, 'login.html', {'next_url': next_url})
+    return render(request, 'login.html', {
+        'next_url': next_url,
+        'username_or_email': DEFAULT_TEST_EMAIL,
+        'default_password': DEFAULT_TEST_PASSWORD,
+    })
 
 
 def signup_view(request):
@@ -1404,9 +1467,16 @@ def teams_view(request):
                 'profile_image': uprof.profile_image if uprof and uprof.profile_image else '',
             })
 
+    is_testing_acc = bool(
+        request.user.username in ['test@kaola.com', 'tester'] or 
+        request.user.email in ['test@kaola.com', 'tester@kaola.com']
+    )
+
     context = {
         'active_view': 'teams',
         'is_admin': is_admin,
+        'can_delete_users': is_admin and not is_testing_acc,
+        'is_testing_account': is_testing_acc,
         'members': members_data,
         'total_count': total_count,
         'admin_count': admin_count,
@@ -2264,10 +2334,16 @@ def api_remove_user(request, user_id):
     if not is_admin:
         return JsonResponse({'success': False, 'error': 'Permission denied. Only Admins can remove team members.'}, status=403)
 
+    # Restriction: Testing account has full admin access except deleting/removing users
+    if request.user.username in ['test@kaola.com', 'tester'] or request.user.email in ['test@kaola.com', 'tester@kaola.com']:
+        return JsonResponse({'success': False, 'error': 'Action not permitted: The Testing account has administrative access but cannot delete or remove team members.'}, status=403)
+
     if user_id == request.user.id:
         return JsonResponse({'success': False, 'error': 'You cannot remove your own account.'}, status=400)
 
     target_user = get_object_or_404(User, id=user_id)
+    if target_user.username in ['test@kaola.com', 'tester'] or target_user.email in ['test@kaola.com', 'tester@kaola.com']:
+        return JsonResponse({'success': False, 'error': 'The default testing account cannot be removed.'}, status=400)
     try:
         try:
             data = json.loads(request.body) if (request.body and request.content_type and 'application/json' in request.content_type) else {}
@@ -3365,6 +3441,10 @@ def api_remove_space_member(request, space_id):
     is_admin = request.user.is_superuser or bool(profile and profile.role and profile.role.role_name in ['Admin', 'Administrator'])
     if not is_admin:
         return JsonResponse({'success': False, 'error': 'Only Administrators can remove members from a space.'}, status=403)
+
+    # Restriction: Testing account cannot remove users from spaces
+    if request.user.username in ['test@kaola.com', 'tester'] or request.user.email in ['test@kaola.com', 'tester@kaola.com']:
+        return JsonResponse({'success': False, 'error': 'Action not permitted: The Testing account cannot remove space members.'}, status=403)
 
     space = get_object_or_404(TeamSetting, pk=space_id)
     try:

@@ -31,9 +31,16 @@ def team_context(request):
     total_spaces_count = len(all_spaces)
 
     is_admin = False
+    is_testing_account = False
+    can_delete_users = False
     if request.user.is_authenticated:
         profile = getattr(request.user, 'profile', None)
         is_admin = request.user.is_superuser or bool(profile and profile.role and profile.role.role_name in ['Admin', 'Administrator'])
+        is_testing_account = bool(
+            request.user.username in ['test@kaola.com', 'tester'] or 
+            request.user.email in ['test@kaola.com', 'tester@kaola.com']
+        )
+        can_delete_users = is_admin and not is_testing_account
 
     can_create_space = is_admin and (total_spaces_count < 3)
 
@@ -50,4 +57,6 @@ def team_context(request):
         'total_spaces_count': total_spaces_count,
         'can_create_space': can_create_space,
         'is_admin': is_admin,
+        'can_delete_users': can_delete_users,
+        'is_testing_account': is_testing_account,
     }

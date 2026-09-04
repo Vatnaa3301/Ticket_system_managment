@@ -343,18 +343,31 @@
             <form id="loginForm" action="{% url 'login' %}" method="POST" style="{% if active_tab == 'signup' %}display: none;{% endif %}">
                 {% csrf_token %}
                 <input type="hidden" name="next" value="{{ next_url }}">
+
+                <!-- Testing Account Notice Banner -->
+                <div style="margin-bottom: 16px; padding: 10px 12px; background: rgba(0, 82, 204, 0.08); border: 1px dashed #579dff; border-radius: 6px; font-size: 12px; line-height: 1.4;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:3px;">
+                        <span style="font-weight:700; color:var(--auth-text-main); display:flex; align-items:center; gap:5px;">
+                            🧪 <span>Testing Account Ready</span>
+                        </span>
+                        <span style="font-size:10px; background:#0052cc; color:#ffffff; padding:2px 6px; border-radius:3px; font-weight:700; text-transform:uppercase; letter-spacing:0.4px;">Admin Access</span>
+                    </div>
+                    <div style="color:var(--auth-text-muted);">
+                        Pre-filled with test credentials. Click <strong>Log In to Kaola</strong> to enter immediately.
+                    </div>
+                </div>
                 
                 <div class="form-group">
                     <label for="loginIdentifier">Email or Username</label>
                     <div class="input-wrapper">
-                        <input type="text" id="loginIdentifier" name="username_or_email" placeholder="Email address or username" required autofocus value="{{ username_or_email|default:'' }}">
+                        <input type="text" id="loginIdentifier" name="username_or_email" placeholder="Email address or username" required autofocus value="{{ username_or_email|default:'test@kaola.com' }}">
                     </div>
                 </div>
 
                 <div class="form-group">
                     <label for="loginPassword">Password</label>
                     <div class="input-wrapper">
-                        <input type="password" id="loginPassword" name="password" placeholder="Enter password" required>
+                        <input type="password" id="loginPassword" name="password" placeholder="Enter password" required value="{{ default_password|default:'password123' }}">
                     </div>
                 </div>
 
